@@ -1,0 +1,59 @@
+const CACHE_NAME = 'advokat-pro-v4';
+const APP_FILES = [
+  "./",
+  "./index.html",
+  "./manifest.webmanifest",
+  "./css/base.css",
+  "./css/layout.css",
+  "./css/components.css",
+  "./css/responsive.css",
+  "./js/data.js",
+  "./js/notifications.js",
+  "./js/theme.js",
+  "./js/config.js",
+  "./js/helpers.js",
+  "./js/navigation.js",
+  "./js/autocomplete.js",
+  "./js/cases.js",
+  "./js/files.js",
+  "./js/actions.js",
+  "./js/deadlines.js",
+  "./js/claims.js",
+  "./js/mutations.js",
+  "./js/tariff.js",
+  "./js/details.js",
+  "./js/calendar.js",
+  "./js/render.js",
+  "./js/app.js"
+];
+
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_FILES)));
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', event => {
+  event.waitUntil(caches.keys().then(keys => Promise.all(
+    keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
+  )));
+  self.clients.claim();
+});
+
+self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
+  event.respondWith(
+    caches.match(event.request).then(cached => cached || fetch(event.request).then(response => {
+      const copy = response.clone();
+      caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+      return response;
+    }).catch(() => caches.match('./index.html')))
+  );
+});
+
+self.addEventListener('message', event => {
+  if (!event.data || event.data.type !== 'SHOW_NOTIFICATION') return;
+  self.registration.showNotification(event.data.title || 'Advokat Pro', {
+    body: event.data.body || '',
+    tag: event.data.tag || 'advokat-pro'
+  });
+});

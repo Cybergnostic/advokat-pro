@@ -1,0 +1,12 @@
+{
+  "name": "Advokat Pro",
+  "short_name": "Advokat Pro",
+  "description": "Upravljanje predmetima za advokatsku kancelariju",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#07070d",
+  "theme_color": "#07070d",
+  "lang": "sr",
+  "icons": []
+}

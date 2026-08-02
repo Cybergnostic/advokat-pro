@@ -1,0 +1,194 @@
+/* Responsive enhancements: mobile remains the default layout. */
+
+/* Very small phones */
+@media (max-width: 380px) {
+  .hdr-in { padding-inline: 10px; gap: 8px; }
+  .hdr-l { gap: 8px; min-width: 0; }
+  .logo { width: 36px; height: 36px; font-size: 17px; }
+  .aname { font-size: 18px; }
+  .asub { font-size: 7px; letter-spacing: 1.3px; }
+  .hdr-r { gap: 5px; }
+  .tbtn { padding: 5px 8px; font-size: 10px; }
+  .hbtn { padding: 8px 10px; font-size: 11px; }
+
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .stat:nth-child(2) { border-right: none; }
+
+  .ct { padding: 10px; }
+  .f2 { grid-template-columns: 1fr; gap: 0; }
+  .ma { flex-direction: column-reverse; }
+  .ma .btn { width: 100%; }
+
+  .npb { margin-inline: 10px; padding: 10px; }
+  .npb-t { font-size: 11px; }
+
+  .cell { min-height: 40px; padding-inline: 1px; }
+  .cdhi { font-size: 8px; }
+  .cell-n { font-size: 10px; }
+}
+
+/* Tablet and larger phones */
+@media (min-width: 600px) {
+  body {
+    max-width: 100%;
+  }
+
+  .hdr-in,
+  .tabs,
+  .stats,
+  .ct,
+  .npb {
+    width: min(100% - 32px, 1080px);
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .hdr-in { padding: 16px 4px 14px; }
+  .logo { width: 46px; height: 46px; }
+  .aname { font-size: 24px; }
+  .asub { font-size: 9px; }
+  .tbtn { padding: 7px 13px; font-size: 12px; }
+  .hbtn { padding: 11px 17px; font-size: 13px; }
+
+  .tabs {
+    border-left: 1px solid var(--ln);
+    border-right: 1px solid var(--ln);
+    justify-content: center;
+  }
+  .tab {
+    flex: 1 1 0;
+    max-width: 180px;
+    padding: 13px 12px 11px;
+    font-size: 10px;
+  }
+
+  .stats {
+    border-left: 1px solid var(--ln);
+    border-right: 1px solid var(--ln);
+  }
+  .stat { padding: 15px 8px; }
+  .stn { font-size: 31px; }
+  .stl { font-size: 9px; }
+
+  .ct { padding: 22px 0 36px; }
+  .npb { margin-top: 14px; }
+
+  #lp,
+  #lr,
+  #lk,
+  #lpot,
+  #larh,
+  #cal-mev {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    align-items: start;
+  }
+
+  #lp > *,
+  #lr > *,
+  #lk > *,
+  #lpot > *,
+  #larh > *,
+  #cal-mev > * {
+    margin-bottom: 0;
+  }
+
+  .card,
+  .tt,
+  .cev,
+  .arh-card {
+    height: 100%;
+  }
+
+  .cg2 { margin-bottom: 18px; }
+  .cell { min-height: 66px; padding: 8px 5px; }
+  .cell-n { font-size: 13px; }
+  .cdhi { padding: 10px 3px; font-size: 10px; }
+  .dot { width: 6px; height: 6px; }
+
+  .mo {
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .mb {
+    width: min(100%, 680px);
+    max-height: min(90vh, 900px);
+    border: 1px solid var(--ln2);
+    border-radius: 20px;
+    padding: 28px 26px 30px;
+    box-shadow: 0 24px 80px rgba(0,0,0,.42);
+  }
+  .mb::before { display: none; }
+  #mo-detail .mb { width: min(100%, 820px); }
+
+  .mt { font-size: 26px; }
+  .fi { font-size: 15px; }
+  .fg { margin-bottom: 15px; }
+}
+
+/* Desktop */
+@media (min-width: 960px) {
+  .hdr-in,
+  .tabs,
+  .stats,
+  .ct,
+  .npb {
+    width: min(100% - 48px, 1240px);
+  }
+
+  .ct { padding-top: 28px; }
+
+  #lp,
+  #lr,
+  #lk,
+  #lpot,
+  #larh,
+  #cal-mev {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  #pg-tarifa {
+    max-width: 860px;
+    margin-inline: auto;
+  }
+
+  .card { padding: 16px 16px 16px 20px; }
+  .cn { font-size: 18px; }
+  .cm { font-size: 13px; }
+  .sh-t { font-size: 10px; }
+
+  .cell { min-height: 84px; }
+  .cal-day-panel { padding: 18px; }
+
+  .f2 { gap: 14px; }
+}
+
+/* Wide desktop */
+@media (min-width: 1280px) {
+  #lp,
+  #lr,
+  #lpot {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  #lk,
+  #larh,
+  #cal-mev {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Touch-friendly defaults */
+@media (pointer: coarse) {
+  button,
+  .tab,
+  .card,
+  .cell,
+  .ac-item,
+  .kdi {
+    min-height: 42px;
+  }
+}

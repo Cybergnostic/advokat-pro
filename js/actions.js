@@ -1,0 +1,21 @@
+// RADNJA FORM
+var _tip='rociste',_st='buduci';
+function setTip(tip){
+  _tip=tip;document.getElementById('tp-pod').className='tg'+(tip==='podnesak'?' agr':'');document.getElementById('tp-roc').className='tg'+(tip==='rociste'?' ab':'');
+  document.getElementById('ra-sw').style.display=tip==='rociste'?'block':'none';
+  document.getElementById('ra-file-wrap').style.display=tip==='podnesak'?'block':'none';
+  document.getElementById('ra-sala').closest('.fg').style.display=tip==='rociste'?'block':'none';
+  if(tip==='rociste')setSt('buduci');raLista();
+}
+function setSt(s){_st=s;var m={odrzano:'agr',odlozeno:'ar',buduci:'ab'};['od','ol','bu'].forEach(function(x,i){var k=['odrzano','odlozeno','buduci'][i];document.getElementById('st-'+x).className='tg'+(k===s?' '+m[k]:'');});}
+function raLista(){var pid=document.getElementById('ra-pred').value;var p=D.p.find(function(x){return x.id===pid;});var lista=getRL(p?p.vrsta:'parnicni',_tip,p?p.uloga:'okrivljeni');document.getElementById('ra-naziv').innerHTML=lista.map(function(r){return '<option value="'+r.n+'">'+r.n+'</option>';}).join('');}
+async function saveRadnja(){
+  var pid=document.getElementById('ra-pred').value,dat=document.getElementById('ra-dat').value,naziv=document.getElementById('ra-naziv').value;
+  if(!pid){alert('Izaberite predmet.');return;}if(!dat){alert('Unesite datum.');return;}if(!naziv){alert('Izaberite naziv radnje.');return;}
+  var attachments=[];
+  if(_tip==='podnesak'){
+    try{attachments=await storeFiles(document.getElementById('ra-files').files);}catch(e){console.error(e);alert('Datoteke nisu mogle da se sačuvaju.');return;}
+  }
+  D.ra.push({id:Date.now().toString(),pid:pid,dat:dat,vr:document.getElementById('ra-vr').value,sala:document.getElementById('ra-sala').value.trim(),nap:document.getElementById('ra-nap').value.trim(),tip:_tip,naziv:naziv,status:_tip==='rociste'?_st:'done',files:attachments});
+  save();closeM('radnja');scheduleAlarms();render();document.getElementById('ra-files').value='';if(calSel)renderCal();
+}

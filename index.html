@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Advokat Pro</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/layout.css">
+<link rel="stylesheet" href="css/components.css">
+<link rel="stylesheet" href="css/responsive.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#07070d">
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-geo"></div>
+  <div class="hdr-in">
+    <div class="hdr-l">
+      <div class="logo">⚖</div>
+      <div><div class="aname">Advokat Pro</div><div class="asub">Upravljanje predmetima</div></div>
+    </div>
+    <div class="hdr-r">
+      <button class="tbtn" onclick="toggleTheme()" id="theme-btn">☀ Svetla</button>
+      <button class="hbtn" onclick="openM('predmet')">+ Predmet</button>
+    </div>
+  </div>
+</div>
+
+<div class="npb" id="npb">
+  <div style="font-size:20px">🔔</div>
+  <div class="npb-t"><b>Dozvoli notifikacije</b> za alarme pre ročišta</div>
+  <button class="npb-btn" onclick="reqPerm()">Dozvoli</button>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="sw('pregled')">Pregled</button>
+  <button class="tab" onclick="sw('rocista')">Ročišta</button>
+  <button class="tab" onclick="sw('rokovi')">Rokovi</button>
+  <button class="tab" onclick="sw('kalendar')">Kalendar</button>
+  <button class="tab" onclick="sw('potrazivanja')">Potraživanja</button>
+  <button class="tab" onclick="sw('tarifa')">Tarifa</button>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="stn" id="sn-p">0</div><div class="stl">Predmeta</div></div>
+  <div class="stat"><div class="stn" id="sn-r">0</div><div class="stl">Ročišta</div></div>
+  <div class="stat"><div class="stn" id="sn-k">0</div><div class="stl">Rokova</div></div>
+  <div class="stat"><div class="stn" id="sn-pot">0</div><div class="stl">Potraživ.</div></div>
+</div>
+
+<div class="ct">
+
+<!-- PREGLED -->
+<div id="pg-pregled" class="pg active">
+  <div id="ncc" style="margin-top:4px;"></div>
+  <div class="sh" style="margin-top:6px;"><div class="sh-t">Svi predmeti</div></div>
+  <div id="lp"></div>
+</div>
+
+<!-- ROČIŠTA -->
+<div id="pg-rocista" class="pg">
+  <div class="sh"><div class="sh-t">Nadolazeća ročišta</div>
+    <button class="btn btn-gd" onclick="openM('radnja',null,null)" style="padding:7px 13px;font-size:11px;">+ Dodaj</button>
+  </div>
+  <div id="lr"></div>
+</div>
+
+<!-- ROKOVI -->
+<div id="pg-rokovi" class="pg">
+  <div class="sh"><div class="sh-t">Rokovi za žalbu</div>
+    <button class="btn btn-gd" onclick="openM('rok')" style="padding:7px 13px;font-size:11px;">+ Dodaj</button>
+  </div>
+  <div id="lk"></div>
+</div>
+
+<!-- KALENDAR -->
+<div id="pg-kalendar" class="pg">
+  <div class="cn2">
+    <button class="ca" onclick="calPrev()">‹</button>
+    <div class="cm2" id="cal-title"></div>
+    <button class="ca" onclick="calNext()">›</button>
+  </div>
+  <div class="cg2">
+    <div class="cdh">
+      <div class="cdhi">Pon</div><div class="cdhi">Uto</div><div class="cdhi">Sre</div>
+      <div class="cdhi">Čet</div><div class="cdhi">Pet</div>
+      <div class="cdhi" style="color:var(--t3)">Sub</div>
+      <div class="cdhi" style="color:var(--rd)">Ned</div>
+    </div>
+    <div class="ccs" id="cal-cells"></div>
+  </div>
+  <!-- Selected day panel -->
+  <div class="cal-day-panel" id="cal-day-panel">
+    <div class="cal-day-hdr">
+      <div class="cal-day-title" id="cal-day-title"></div>
+      <button class="btn btn-gd" id="cal-add-btn" onclick="calAddHearing()" style="padding:6px 12px;font-size:11px;">+ Ročište</button>
+    </div>
+    <div id="cal-day-ev"></div>
+  </div>
+  <div class="ds">Sve u ovom mesecu</div>
+  <div id="cal-mev"></div>
+</div>
+
+<!-- POTRAŽIVANJA -->
+<div id="pg-potrazivanja" class="pg">
+  <div class="sh">
+    <div class="sh-t">Aktivna potraživanja</div>
+    <button class="btn btn-gd" onclick="openM('pot')" style="padding:7px 13px;font-size:11px;">+ Dodaj</button>
+  </div>
+  <div id="lpot"></div>
+  <div class="ds" id="arh-ds" style="display:none;">Arhiva plaćanja</div>
+  <div id="larh"></div>
+</div>
+
+<!-- TARIFA -->
+<div id="pg-tarifa" class="pg">
+  <div class="sh-t" style="margin-bottom:12px;">Kalkulator tarife 2025</div>
+  <div class="tcw">
+    <div class="fl">Vrednost spora (RSD)</div>
+    <input type="number" class="fi" id="tc-val" placeholder="0" oninput="calcTC()">
+    <div class="tc-sub">dinara · Sl. glasnik RS 56/2025 · od 5. jula 2025.</div>
+  </div>
+  <div class="fl" style="margin-bottom:7px;">Vrsta postupka</div>
+  <select class="fi" id="tc-vrsta" onchange="calcTC()" style="margin-bottom:9px;">
+    <option value="parnicni">Parnični — T.br.13</option>
+    <option value="krivicni">Krivični — T.br.1</option>
+    <option value="izvrsni">Izvršni</option>
+    <option value="nepro">Neprocenjivi — T.br.14</option>
+  </select>
+  <div id="tc-sud-wrap" style="margin-bottom:9px;">
+    <div class="fl" style="margin-bottom:5px;">Vrsta suda (sudska taksa)</div>
+    <div class="tog">
+      <button class="tg ag" id="ts-os" onclick="tcSud('osnovni')">Osnovni</button>
+      <button class="tg" id="ts-vs" onclick="tcSud('visi')">Viši</button>
+      <button class="tg" id="ts-ps" onclick="tcSud('privredni')">Privredni</button>
+    </div>
+  </div>
+  <div id="tc-k-opts" style="display:none;margin-bottom:9px;">
+    <div class="tog" style="margin-bottom:8px;">
+      <button class="tg ab" id="tc-okr" onclick="tcUloga('okrivljeni')">Branilac okrivljenog</button>
+      <button class="tg" id="tc-ost" onclick="tcUloga('osteceni')">Punomoćnik oštećenog</button>
+    </div>
+    <div class="tog">
+      <button class="tg ab" id="tc-sne" onclick="tcSld(false)">Ugovorna odbrana</button>
+      <button class="tg" id="tc-sda" onclick="tcSld(true)">Po sl. dužnosti (−50%)</button>
+    </div>
+  </div>
+  <div id="tc-npro-opts" style="display:none;margin-bottom:9px;">
+    <select class="fi" id="tc-npv" onchange="calcTC()">
+      <option value="0">Smetanje poseda, razvod, roditeljsko pravo, radni sporovi...</option>
+      <option value="1">Prekršaji pred policijom, nasilje u porodici</option>
+      <option value="2">Službenosti, stambeni, neprocenjivi OS</option>
+      <option value="3">Prekršajni sud — ostali</option>
+      <option value="4">Utvrđ. očinstva, stečaj, neprocenjivi pred PS...</option>
+      <option value="5">Ostali postupci pred državnim organom</option>
+      <option value="6">Zakonsko izdržavanje</option>
+      <option value="7">Privredni prestupi, poreski/carinski, neprocenjivi VS</option>
+      <option value="8">Ostali sporovi pred Upravnim sudom</option>
+      <option value="9">Autorski sporovi, Ustavni sud, međunarodna arbitraža</option>
+    </select>
+  </div>
+  <div id="tc-result"></div>
+  <div id="tc-taksa" style="display:none;">
+    <div class="ds">Sudska taksa (ZST, Sl. gl. 91/2025)</div>
+    <div class="tt">
+      <div class="tt-h" id="tc-sud-lbl"></div>
+      <div class="tt-r"><span class="tt-l">Taksa za tužbu</span><span class="tt-v" id="tc-tuzba"></span></div>
+      <div class="tt-r"><span class="tt-l">Taksa za presudu (I stepen)</span><span class="tt-v" id="tc-presuda"></span></div>
+      <div class="tt-r"><span class="tt-l">Žalba</span><span class="tt-v hi" id="tc-zalba"></span></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /ct -->
+
+<!-- ══ MODAL: PREDMET ══ -->
+<div class="mo" id="mo-predmet">
+  <div class="mb">
+    <button class="mc" onclick="closeM('predmet')">✕</button>
+    <div class="mt">Novi predmet</div>
+    <div class="fg"><label class="fl">Broj predmeta</label><input type="text" class="fi" id="p-br" placeholder="P 123/25"></div>
+    <div class="fg"><label class="fl">Vrsta postupka</label>
+      <select class="fi" id="p-vrsta" onchange="pVrsta()">
+        <option value="parnicni">Parnični postupak</option>
+        <option value="krivicni">Krivični postupak</option>
+        <option value="prekrsajni">Prekršajni postupak</option>
+        <option value="upravni">Upravni / Poreski postupak</option>
+        <option value="izvrsni">Izvršni postupak</option>
+        <option value="vanparnicni">Vanparnični postupak</option>
+        <option value="tuzilastvo">Postupak pred Tužilaštvom</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label class="fl" id="lbl-s1">Stranka 1 (klijent)</label>
+      <input type="text" class="fi" id="p-tuz" placeholder="Ime i prezime">
+    </div>
+    <div class="fg" id="fg-uloga">
+      <label class="fl">Uloga klijenta</label>
+      <div class="tog" id="tog-uloga"></div>
+    </div>
+    <div class="fg" id="fg-s2">
+      <label class="fl" id="lbl-s2">Protivna stranka</label>
+      <input type="text" class="fi" id="p-tuz2" placeholder="Ime i prezime">
+    </div>
+    <!-- Tužilaštvo -->
+    <div id="p-tw" style="display:none;">
+      <div class="fg"><label class="fl">Vrsta tužilaštva</label>
+        <div class="tog" style="flex-wrap:wrap;gap:2px;">
+          <button class="tg ag" id="pt-os" onclick="pSetTuz('osnovno')" style="flex:1 1 45%;padding:9px 4px;font-size:10px">Osnovno tužilaštvo</button>
+          <button class="tg" id="pt-vs" onclick="pSetTuz('vise')" style="flex:1 1 45%;padding:9px 4px;font-size:10px">Više tužilaštvo</button>
+          <button class="tg" id="pt-ok" onclick="pSetTuz('org_kriminal')" style="flex:1 1 45%;padding:9px 4px;font-size:10px">Za org. kriminal</button>
+          <button class="tg" id="pt-ko" onclick="pSetTuz('korupcija')" style="flex:1 1 45%;padding:9px 4px;font-size:10px">Za suzbijanje korupcije</button>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Broj KTN / KT predmeta</label><input type="text" class="fi" id="p-ktn" placeholder="KTN 123/25"></div>
+      <div class="fg"><label class="fl">Javni tužilac / Zamenik</label><input type="text" class="fi" id="p-jtuz" placeholder="Ime i prezime"></div>
+      <div class="fg"><label class="fl">Faza postupka</label>
+        <select class="fi" id="p-faza">
+          <option value="predistrazni">Predistražni postupak</option>
+          <option value="istrazni">Istražni postupak</option>
+          <option value="optuzenje">Optuženje</option>
+          <option value="sudjenje">Suđenje</option>
+          <option value="pritvor">Pritvorski predmet</option>
+        </select>
+      </div>
+    </div>
+    <!-- Vrednost / neprocenjivi predmet -->
+    <div id="p-vw">
+      <div class="fg" id="p-proc-wrap">
+        <label class="fl">Vrsta vrednosti predmeta</label>
+        <div class="tog">
+          <button class="tg ag" id="pp-proc" type="button" onclick="pProcenjiv(true)">Procenjivi predmet</button>
+          <button class="tg" id="pp-neproc" type="button" onclick="pProcenjiv(false)">Neprocenjivi predmet</button>
+        </div>
+      </div>
+      <div class="fg" id="p-vred-wrap">
+        <label class="fl">Vrednost spora (RSD)</label>
+        <input type="number" class="fi" id="p-vred" placeholder="0" oninput="pTariff()">
+      </div>
+      <div class="fg" id="p-npro-wrap" style="display:none;">
+        <label class="fl">Tarifna kategorija neprocenjivog predmeta</label>
+        <select class="fi" id="p-npro" onchange="pTariff()">
+          <option value="0">Smetanje poseda, razvod, roditeljsko pravo, radni sporovi...</option>
+          <option value="1">Prekršaji pred policijom, nasilje u porodici</option>
+          <option value="2">Službenosti, stambeni, neprocenjivi pred osnovnim sudom</option>
+          <option value="3">Prekršajni sud — ostali</option>
+          <option value="4">Utvrđivanje očinstva, stečaj, neprocenjivi pred privrednim sudom...</option>
+          <option value="5">Ostali postupci pred državnim organom</option>
+          <option value="6">Zakonsko izdržavanje</option>
+          <option value="7">Privredni prestupi, poreski/carinski, neprocenjivi pred višim sudom</option>
+          <option value="8">Ostali sporovi pred Upravnim sudom</option>
+          <option value="9">Autorski sporovi, Ustavni sud, međunarodna arbitraža</option>
+        </select>
+      </div>
+      <div id="p-itr" style="display:none;" class="itr"></div>
+    </div>
+    <!-- Krivični -->
+    <div id="p-kw" style="display:none;">
+      <div class="fg"><label class="fl">Lice koje advokat zastupa</label>
+        <div class="tog" id="p-uloga-tog" style="flex-wrap:wrap;gap:2px;">
+          <button class="tg ab" id="pu-okr" type="button" onclick="pUloga('okrivljeni')">Okrivljeni</button>
+          <button class="tg" id="pu-osu" type="button" onclick="pUloga('osumnjiceni')" style="display:none;">Osumnjičeni</button>
+          <button class="tg" id="pu-ost" type="button" onclick="pUloga('osteceni')">Oštećeni</button>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Vrsta odbrane</label>
+        <div class="tog">
+          <button class="tg ab" id="pu-ugo" onclick="pSld(false)">Ugovorna odbrana</button>
+          <button class="tg" id="pu-sld" onclick="pSld(true)">Po sl. dužnosti (−50%)</button>
+        </div>
+      </div>
+      <div class="fg"><label class="fl">Krivično delo</label>
+        <div class="kd-wrap">
+          <input type="text" class="fi" id="p-kd" placeholder="Ukucajte naziv dela..." autocomplete="off" oninput="kdSearch('p')" onfocus="kdSearch('p')">
+          <div class="kd-res" id="p-kdr"></div>
+        </div>
+        <div class="kd-info" id="p-kdi"></div>
+      </div>
+      <div id="p-zw" style="display:none;" class="fg"><label class="fl">Zastarelost</label><div class="tt" id="p-zb" style="margin-bottom:0"></div></div>
+      <div class="fg"><label class="fl">Zaprećena kazna (tarifni razred)</label>
+        <select class="fi" id="p-kazna">
+          <option value="0">do 3 god.</option><option value="1">3 do 5 god.</option>
+          <option value="2">5 do 10 god.</option><option value="3">10 do 15 god.</option>
+          <option value="4">preko 15 god.</option><option value="5">30–40 god./doživotni</option>
+        </select>
+      </div>
+    </div>
+    <div id="p-sud-w">
+      <div class="fg"><label class="fl">Sud</label><input type="text" class="fi" id="p-sud" placeholder="Osnovni sud u Nišu"></div>
+      <div class="fg"><label class="fl">Vrsta suda (za taksu)</label>
+        <div class="tog">
+          <button class="tg ag" id="ps-os" onclick="pSud('osnovni')">Osnovni</button>
+          <button class="tg" id="ps-vs" onclick="pSud('visi')">Viši</button>
+          <button class="tg" id="ps-ps" onclick="pSud('privredni')">Privredni</button>
+        </div>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Telefon klijenta</label><input type="tel" class="fi" id="p-tel" placeholder="+381601234567"></div>
+    <div class="fg"><label class="fl">Plaćeno do sada (RSD)</label><input type="number" class="fi" id="p-plac" placeholder="0"></div>
+    <div class="fg"><label class="fl">Beleška</label><input type="text" class="fi" id="p-bel" placeholder="Kratka napomena..."></div>
+    <div class="ma"><button class="btn btn-out" onclick="closeM('predmet')">Otkaži</button><button class="btn btn-gd" onclick="savePredmet()">Sačuvaj predmet</button></div>
+  </div>
+</div>
+
+<!-- ══ MODAL: RADNJA ══ -->
+<div class="mo" id="mo-radnja">
+  <div class="mb">
+    <button class="mc" onclick="closeM('radnja')">✕</button>
+    <div class="mt">Procesna radnja</div>
+    <!-- AUTOCOMPLETE predmet -->
+    <div class="fg">
+      <label class="fl">Broj predmeta</label>
+      <div class="ac-wrap">
+        <input type="text" class="fi" id="ra-search" placeholder="Ukucajte broj predmeta..." autocomplete="off" oninput="raAC()" onfocus="raAC()">
+        <div class="ac-res" id="ra-ac-res"></div>
+      </div>
+      <input type="hidden" id="ra-pred">
+      <div class="ac-sel" id="ra-ac-sel"></div>
+    </div>
+    <div class="fg"><label class="fl">Tip radnje</label>
+      <div class="tog">
+        <button class="tg agr" id="tp-pod" onclick="setTip('podnesak')">📄 Podnesak</button>
+        <button class="tg" id="tp-roc" onclick="setTip('rociste')">🏛 Ročište</button>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Naziv radnje</label><select class="fi" id="ra-naziv"></select></div>
+    <div class="fg" id="ra-file-wrap" style="display:none;">
+      <label class="fl">Priloži podnesak</label>
+      <input type="file" class="fi" id="ra-files" multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+      <div class="tc-sub" style="margin-top:6px;">PDF, Word ili slika. Datoteke se čuvaju lokalno na ovom uređaju.</div>
+    </div>
+    <div class="f2">
+      <div class="fg"><label class="fl">Datum</label><input type="date" class="fi" id="ra-dat"></div>
+      <div class="fg"><label class="fl">Vreme</label><input type="time" class="fi" id="ra-vr"></div>
+    </div>
+    <div class="fg"><label class="fl">Sud / Sala</label><input type="text" class="fi" id="ra-sala" placeholder="Sala 101"></div>
+    <div class="fg" id="ra-sw" style="display:none;"><label class="fl">Status ročišta</label>
+      <div class="tog">
+        <button class="tg" id="st-od" onclick="setSt('odrzano')">✅ Održano</button>
+        <button class="tg" id="st-ol" onclick="setSt('odlozeno')">⏸ Odloženo</button>
+        <button class="tg ab" id="st-bu" onclick="setSt('buduci')">📅 Buduće</button>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Napomena</label><input type="text" class="fi" id="ra-nap" placeholder="Napomena..."></div>
+    <div class="ma"><button class="btn btn-out" onclick="closeM('radnja')">Otkaži</button><button class="btn btn-gd" onclick="saveRadnja()">Sačuvaj</button></div>
+  </div>
+</div>
+
+<!-- ══ MODAL: ROK ══ -->
+<div class="mo" id="mo-rok">
+  <div class="mb">
+    <button class="mc" onclick="closeM('rok')">✕</button>
+    <div class="mt">Rok za žalbu</div>
+    <div class="fg"><label class="fl">Broj predmeta</label>
+      <div class="ac-wrap">
+        <input type="text" class="fi" id="rk-search" placeholder="Ukucajte broj predmeta..." autocomplete="off" oninput="rkAC()" onfocus="rkAC()">
+        <div class="ac-res" id="rk-ac-res"></div>
+      </div>
+      <input type="hidden" id="rk-pred">
+      <div class="ac-sel" id="rk-ac-sel"></div>
+    </div>
+    <div class="fg"><label class="fl">Datum donošenja odluke</label><input type="date" class="fi" id="rk-dat" oninput="calcRok()"></div>
+    <div class="fg"><label class="fl">Trajanje roka</label>
+      <select class="fi" id="rk-tr" oninput="calcRok()">
+        <option value="8">8 dana — parnični, krivični, izvršni</option>
+        <option value="15">15 dana — upravni, poreski, prekršajni</option>
+      </select>
+    </div>
+    <div class="fg"><label class="fl">Poslednji dan roka</label>
+      <input type="text" class="fi" id="rk-kraj" readonly style="color:var(--gd2);font-weight:700;font-size:16px;font-family:'Cormorant Garamond',serif">
+    </div>
+    <div class="fg"><label class="fl">Napomena</label><input type="text" class="fi" id="rk-nap" placeholder="Žalba na presudu..."></div>
+    <div class="ma"><button class="btn btn-out" onclick="closeM('rok')">Otkaži</button><button class="btn btn-gd" onclick="saveRok()">Sačuvaj rok</button></div>
+  </div>
+</div>
+
+<!-- ══ MODAL: POTRAŽIVANJE ══ -->
+<div class="mo" id="mo-pot">
+  <div class="mb">
+    <button class="mc" onclick="closeM('pot')">✕</button>
+    <div class="mt">Novo potraživanje</div>
+    <!-- Autocomplete ili ručni unos -->
+    <div class="fg"><label class="fl">Predmet (iz liste ili ručno)</label>
+      <div class="ac-wrap">
+        <input type="text" class="fi" id="pot-search" placeholder="Broj predmeta ili ime klijenta..." autocomplete="off" oninput="potAC()" onfocus="potAC()">
+        <div class="ac-res" id="pot-ac-res"></div>
+      </div>
+      <input type="hidden" id="pot-pid">
+      <div class="ac-sel" id="pot-ac-sel"></div>
+    </div>
+    <div class="fg"><label class="fl">Broj predmeta (ako nije u listi)</label><input type="text" class="fi" id="pot-br" placeholder="P 123/25 (okončan predmet...)"></div>
+    <div class="fg"><label class="fl">Klijent</label><input type="text" class="fi" id="pot-klijent" placeholder="Ime i prezime klijenta"></div>
+    <div class="fg"><label class="fl">Dosuđeni iznos (RSD)</label><input type="number" class="fi" id="pot-iznos" placeholder="0"></div>
+    <div class="fg"><label class="fl">Status potraživanja</label>
+      <div class="tog" style="flex-wrap:wrap;gap:2px;">
+        <button class="tg agr" id="pst-prav" onclick="potSt('pravnosnazno')" style="flex:1 1 45%;padding:9px 4px;font-size:10px">✅ Pravnosnažno</button>
+        <button class="tg" id="pst-zalb" onclick="potSt('zalbeno')" style="flex:1 1 45%;padding:9px 4px;font-size:10px">⚠ Žalbeni postupak</button>
+        <button class="tg" id="pst-izv" onclick="potSt('izvrsno')" style="flex:1 1 45%;padding:9px 4px;font-size:10px">⚙ U izvršnom postupku</button>
+        <button class="tg" id="pst-del" onclick="potSt('delimicno')" style="flex:1 1 45%;padding:9px 4px;font-size:10px">◑ Delimično naplaćeno</button>
+      </div>
+    </div>
+    <div class="fg"><label class="fl">Datum odluke</label><input type="date" class="fi" id="pot-dat"></div>
+    <div class="fg"><label class="fl">Napomena</label><input type="text" class="fi" id="pot-nap" placeholder="Napomena..."></div>
+    <div class="ma"><button class="btn btn-out" onclick="closeM('pot')">Otkaži</button><button class="btn btn-gd" onclick="savePot()">Sačuvaj</button></div>
+  </div>
+</div>
+
+<!-- ══ MODAL: DETAIL ══ -->
+<div class="mo" id="mo-detail"><div class="mb" id="mo-dc"></div></div>
+
+<!-- ══ MODAL: STATUS ══ -->
+<div class="mo" id="mo-status">
+  <div class="mb">
+    <button class="mc" onclick="closeM('status')">✕</button>
+    <div class="mt">Status ročišta</div>
+    <div id="st-info" style="font-size:14px;color:var(--t2);margin-bottom:17px;font-family:'Cormorant Garamond',serif;font-style:italic"></div>
+    <div class="tog">
+      <button class="tg" id="upd-od" onclick="updSt('odrzano')">✅ Održano</button>
+      <button class="tg" id="upd-ol" onclick="updSt('odlozeno')">⏸ Odloženo</button>
+      <button class="tg" id="upd-bu" onclick="updSt('buduci')">📅 Buduće</button>
+    </div>
+    <input type="hidden" id="upd-id"><input type="hidden" id="upd-pid">
+    <div class="ma"><button class="btn btn-out" onclick="closeM('status')" style="width:100%">Zatvori</button></div>
+  </div>
+</div>
+
+<!-- ══ MODAL: POT AKCIJA ══ -->
+<div class="mo" id="mo-potact">
+  <div class="mb">
+    <button class="mc" onclick="closeM('potact')">✕</button>
+    <div class="mt" id="potact-title">Potraživanje</div>
+    <div id="potact-info" style="margin-bottom:16px;"></div>
+    <div class="ds">Akcija</div>
+    <div style="display:flex;flex-direction:column;gap:9px;" id="potact-btns"></div>
+    <input type="hidden" id="potact-id">
+    <div class="ma"><button class="btn btn-out" onclick="closeM('potact')" style="width:100%">Zatvori</button></div>
+  </div>
+</div>
+
+<script src="js/data.js" defer></script>
+<script src="js/notifications.js" defer></script>
+<script src="js/theme.js" defer></script>
+<script src="js/config.js" defer></script>
+<script src="js/helpers.js" defer></script>
+<script src="js/navigation.js" defer></script>
+<script src="js/autocomplete.js" defer></script>
+<script src="js/cases.js" defer></script>
+<script src="js/files.js" defer></script>
+<script src="js/actions.js" defer></script>
+<script src="js/deadlines.js" defer></script>
+<script src="js/claims.js" defer></script>
+<script src="js/mutations.js" defer></script>
+<script src="js/tariff.js" defer></script>
+<script src="js/details.js" defer></script>
+<script src="js/calendar.js" defer></script>
+<script src="js/render.js" defer></script>
+<script src="js/app.js" defer></script>
+</body>
+</html>
