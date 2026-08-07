@@ -16,6 +16,7 @@ async function apiRequest(url, options) {
 
 function chooseUserProfile(users){
   return new Promise(function(resolve,reject){
+    if(!users.length){reject(new Error('Nema slobodnog korisničkog profila za ovaj Access nalog.'));return;}
     var overlay=document.createElement('div');
     overlay.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(7,7,13,.96);display:flex;align-items:center;justify-content:center;padding:20px';
     var card=document.createElement('div');
@@ -77,7 +78,7 @@ async function initSession(){
   var session=await apiRequest('/api/session',{method:'GET',headers:{}});
   USERS=session.users||[];
   CURRENT_USER=session.current;
-  if(!CURRENT_USER)CURRENT_USER=await chooseUserProfile(USERS);
+  if(!CURRENT_USER)CURRENT_USER=await chooseUserProfile(session.claimableUsers||[]);
   installUserUi();
   return CURRENT_USER;
 }
