@@ -29,11 +29,12 @@ async function subscribeToPush(){
         applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
       });
     }
+    var raw=sub.toJSON ? sub.toJSON() : {};
     var res=await fetch('/api/push/subscribe',{
       method:'POST',
       credentials:'same-origin',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({endpoint:sub.endpoint})
+      body:JSON.stringify({endpoint:sub.endpoint,keys:(raw&&raw.keys)||{}})
     });
     if(!res.ok) throw new Error('Push registration HTTP '+res.status);
     return true;
@@ -44,7 +45,6 @@ function initSW(){
   if(!('serviceWorker' in navigator)) return;
   navigator.serviceWorker.register('sw.js').then(async function(r){
     swReg=r;
-    await navigator.serviceWorker.ready;
     swReg=await navigator.serviceWorker.ready;
     if(permN()==='granted') await subscribeToPush();
   }).catch(function(e){ console.warn('Service worker registration failed',e); });
@@ -58,7 +58,6 @@ function reqPerm(){
     Notification.requestPermission().then(async function(p){
       document.getElementById('npb').classList.remove('show');
       if(p==='granted'){
-        scheduleAlarms();
         await subscribeToPush();
         sendN('Advokat Pro','Notifikacije aktivirane!');
       }
@@ -72,36 +71,10 @@ function sendN(title,body,tag){
     else { try{ new Notification(title,{body:body}); }catch(e2){} }
   }catch(e){}
 }
+
+// Timed hearing/deadline reminders are now sent server-side by the reminder Worker.
+// Keep this function for existing callers in actions/deadlines/mutations.
 function scheduleAlarms(){
-  var alarms=[]; var now=Date.now();
-  D.ra.forEach(function(r){
-    if(r.tip!=='rociste'||r.status!=='buduci'||!r.vr) return;
-    var p=D.p.find(function(x){return x.id===r.pid;});
-    var dt=new Date(r.dat+'T'+r.vr).getTime();
-    var a1=dt-3600000;
-    if(a1>now) alarms.push({id:'r1h_'+r.id,time:a1,title:'⚖ Ročište za 1 sat',body:(p?p.br+' — ':'')+r.naziv+' u '+r.vr+(r.sala?', '+r.sala:'')});
-    var a8=new Date(r.dat+'T08:00').getTime();
-    if(a8>now) alarms.push({id:'r8_'+r.id,time:a8,title:'📅 Ročište danas',body:(p?p.br+' — ':'')+r.naziv+' u '+r.vr});
-  });
-  D.k.forEach(function(k){
-    var p=D.p.find(function(x){return x.id===k.pid;});
-    var db=new Date(k.krajIso+'T00:00'); db.setDate(db.getDate()-1); db.setHours(8,0,0,0);
-    if(db.getTime()>now) alarms.push({id:'kpre_'+k.id,time:db.getTime(),title:'⏰ Sutra ističe rok!',body:(p?p.br+' — ':'')+'Poslednji dan: '+fmtD(k.krajIso)});
-    var dd=new Date(k.krajIso+'T08:00').getTime();
-    if(dd>now) alarms.push({id:'kdan_'+k.id,time:dd,title:'🔴 DANAS ističe rok!',body:(p?p.br+' — ':'')+'Poslednji dan je DANAS'});
-  });
-  localStorage.setItem('ap_alarms',JSON.stringify(alarms));
+  try{ localStorage.removeItem('ap_alarms'); }catch(e){}
 }
-function checkAlarms(){
-  try{
-    if(!hasN()||permN()!=='granted') return;
-    var now=Date.now();
-    var alarms=JSON.parse(localStorage.getItem('ap_alarms')||'[]');
-    var fired=JSON.parse(localStorage.getItem('ap_fired')||'[]');
-    alarms.forEach(function(a){
-      if(a.time<=now&&a.time>now-3600000&&fired.indexOf(a.id)===-1){ sendN(a.title,a.body,a.id); fired.push(a.id); }
-    });
-    localStorage.setItem('ap_fired',JSON.stringify(fired));
-  }catch(e){}
-}
-setInterval(checkAlarms, 60000);
+function checkAlarms(){}
