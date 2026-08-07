@@ -1,7 +1,8 @@
 // HELPERS
 var MONTHS=['Januar','Februar','Mart','April','Maj','Jun','Jul','Avgust','Septembar','Oktobar','Novembar','Decembar'];
-var VL={parnicni:'Parnični',krivicni:'Krivični',prekrsajni:'Prekršajni',upravni:'Upravni/Poreski',izvrsni:'Izvršni',vanparnicni:'Vanparnični',tuzilastvo:'Tužilaštvo'};
-var KL=['do 3 god.','3–5 god.','5–10 god.','10–15 god.','preko 15 god.','30–40 god./doživotni'];
+// Filled from /api/config during app startup.
+var VL={};
+var KL=[];
 var SL={odrzano:'✅ Održano',odlozeno:'⏸ Odloženo',buduci:'📅 Buduće'};
 var SUDL={osnovni:'Osnovni sud',visi:'Viši sud',privredni:'Privredni sud'};
 var TUZL={osnovno:'Osnovno tužilaštvo',vise:'Više tužilaštvo',org_kriminal:'Za org. kriminal',korupcija:'Za suzbijanje korupcije'};
