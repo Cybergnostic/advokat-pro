@@ -21,11 +21,12 @@ function render(){
     var evidR=D.ra.filter(function(r){return r.pid===p.id&&r.status!=='buduci';});
     var ukupno=0;evidR.forEach(function(r){ukupno+=calcIz(r,p);});
     var pct=ukupno?Math.min(100,Math.round(((p.plac||0)/ukupno)*100)):0;
-    var isK=p.vrsta==='krivicni'||p.vrsta==='tuzilastvo';
+    var cfg=getCaseCfg(p.vrsta);
+    var isK=!!cfg.isCriminal;
     return '<div class="card '+(urgent?'cr':'cg')+'" onclick="openDetail(\''+p.id+'\')">'
       +'<div class="ch"><div class="cn">'+p.br+'</div><div style="display:flex;align-items:center;gap:7px"><span class="bdg bg">'+(VL[p.vrsta]||p.vrsta)+'</span><button class="btn btn-rd" style="font-size:11px;padding:4px 8px" title="Obriši predmet" onclick="event.stopPropagation();delPredmet(\''+p.id+'\')">🗑 Obriši</button></div></div>'
       +'<div class="cm">'+(p.lbl1||'Klijent')+': <b>'+p.tuz+'</b>'
-      +(p.tuz2&&p.vrsta!=='tuzilastvo'?'<br>'+(p.lbl2||'Protivnik')+': '+p.tuz2:'')
+      +(p.tuz2&&!cfg.isProsecution?'<br>'+(p.lbl2||'Protivnik')+': '+p.tuz2:'')
       +(p.sud?'<br>🏛 '+p.sud:'')
       +(isK&&p.kdNaziv?'<br>⚖ '+p.kdNaziv+(p.sld?' · sl. dužnost':''):'')
       +(!isK&&p.vred?'<br>💰 <b>'+p.vred.toLocaleString('sr-RS')+' din</b>':'')
