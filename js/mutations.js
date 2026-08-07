@@ -25,7 +25,7 @@ async function addUplata(id){
   p.plac=novi;openDetail(id);
 }
 function openStUpdate(raId,pid){
-  var ra=D.ra.find(function(x){return x.id===raId;}); if(!ra) return;
+  var ra=D.ra.find(function(x){return x.id===raId;});if(!ra)return;
   document.getElementById('upd-id').value=raId;document.getElementById('upd-pid').value=pid;
   document.getElementById('st-info').textContent=ra.naziv+' · '+fmtD(ra.dat);
   var m={odrzano:'agr',odlozeno:'ar',buduci:'ab'};
@@ -35,6 +35,9 @@ function openStUpdate(raId,pid){
 async function updSt(s){
   var id=document.getElementById('upd-id').value;var pid=document.getElementById('upd-pid').value;
   var ra=D.ra.find(function(x){return x.id===id;});if(!ra)return;
-  try{await dbMutate({entity:'action',action:'update',id:id,fields:{status:s}});}catch(e){dbError(e);return;}
+  try{
+    var result=await dbMutate({entity:'action',action:'update',id:id,fields:{status:s}});
+    ra.iznos=Number(result&&result.fee_amount||0);
+  }catch(e){dbError(e);return;}
   ra.status=s;scheduleAlarms();closeM('status');openDetail(pid);
 }
