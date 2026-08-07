@@ -81,6 +81,37 @@ SELECT 'legacy-' || id,
 FROM cases
 WHERE paid_amount > 0;
 
+-- IDs are rendered into DOM event handlers by the legacy front end. Normal app
+-- IDs are timestamps or UUIDs; reject crafted identifiers containing punctuation
+-- that could break out of those handler strings.
+CREATE TRIGGER validate_case_id_before_insert
+BEFORE INSERT ON cases
+WHEN NEW.id = '' OR length(NEW.id) > 128 OR NEW.id GLOB '*[^0-9A-Za-z_-]*'
+BEGIN
+  SELECT RAISE(ABORT, 'Invalid case id');
+END;
+
+CREATE TRIGGER validate_action_id_before_insert
+BEFORE INSERT ON actions
+WHEN NEW.id = '' OR length(NEW.id) > 128 OR NEW.id GLOB '*[^0-9A-Za-z_-]*'
+BEGIN
+  SELECT RAISE(ABORT, 'Invalid action id');
+END;
+
+CREATE TRIGGER validate_deadline_id_before_insert
+BEFORE INSERT ON deadlines
+WHEN NEW.id = '' OR length(NEW.id) > 128 OR NEW.id GLOB '*[^0-9A-Za-z_-]*'
+BEGIN
+  SELECT RAISE(ABORT, 'Invalid deadline id');
+END;
+
+CREATE TRIGGER validate_claim_id_before_insert
+BEFORE INSERT ON claims
+WHEN NEW.id = '' OR length(NEW.id) > 128 OR NEW.id GLOB '*[^0-9A-Za-z_-]*'
+BEGIN
+  SELECT RAISE(ABORT, 'Invalid claim id');
+END;
+
 CREATE INDEX idx_cases_deleted_at ON cases(deleted_at);
 CREATE INDEX idx_cases_assigned_user ON cases(assigned_user_id);
 CREATE INDEX idx_actions_deleted_at ON actions(deleted_at);
