@@ -20,6 +20,31 @@ function auth_(value) {
   return cfg;
 }
 
+function managedFile_(id, cfg) {
+  const file = DriveApp.getFileById(id);
+  const parents = file.getParents();
+  while (parents.hasNext()) {
+    if (parents.next().getId() === cfg.folderId) return file;
+  }
+  throw new Error('File is outside the configured Advokat Pro folder.');
+}
+
+function download_(id, cfg) {
+  if (!id) throw new Error('Missing file id.');
+  const file = managedFile_(id, cfg);
+  const blob = file.getBlob();
+  const bytes = blob.getBytes();
+  if (bytes.length > MAX_FILE_SIZE) throw new Error('File is larger than 10 MB.');
+  return {
+    ok: true,
+    id,
+    name: file.getName(),
+    type: blob.getContentType() || 'application/octet-stream',
+    size: bytes.length,
+    data: Utilities.base64Encode(bytes)
+  };
+}
+
 function doPost(e) {
   try {
     const body = JSON.parse((e.postData && e.postData.contents) || '{}');
@@ -43,10 +68,14 @@ function doPost(e) {
       return out_({ ok: true, id: file.getId(), name: file.getName(), type, size: bytes.length });
     }
 
+    if (op === 'download') {
+      return out_(download_(String(body.id || ''), cfg));
+    }
+
     if (op === 'delete') {
       const id = String(body.id || '');
       if (!id) throw new Error('Missing file id.');
-      DriveApp.getFileById(id).setTrashed(true);
+      managedFile_(id, cfg).setTrashed(true);
       return out_({ ok: true });
     }
 
@@ -56,29 +85,7 @@ function doPost(e) {
   }
 }
 
-function doGet(e) {
-  try {
-    auth_(e.parameter.secret);
-    const op = String(e.parameter.op || '');
-    if (op !== 'download') throw new Error('Unsupported operation.');
-
-    const id = String(e.parameter.id || '');
-    if (!id) throw new Error('Missing file id.');
-
-    const file = DriveApp.getFileById(id);
-    const blob = file.getBlob();
-    const bytes = blob.getBytes();
-    if (bytes.length > MAX_FILE_SIZE) throw new Error('File is larger than 10 MB.');
-
-    return out_({
-      ok: true,
-      id,
-      name: file.getName(),
-      type: blob.getContentType() || 'application/octet-stream',
-      size: bytes.length,
-      data: Utilities.base64Encode(bytes)
-    });
-  } catch (err) {
-    return out_({ ok: false, error: String(err && err.message ? err.message : err) });
-  }
+// Downloads intentionally no longer accept the shared secret in a query string.
+function doGet() {
+  return out_({ ok: false, error: 'Use POST.' });
 }
