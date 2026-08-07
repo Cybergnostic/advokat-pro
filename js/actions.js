@@ -12,10 +12,13 @@ function raLista(){var pid=document.getElementById('ra-pred').value;var p=D.p.fi
 async function saveRadnja(){
   var pid=document.getElementById('ra-pred').value,dat=document.getElementById('ra-dat').value,naziv=document.getElementById('ra-naziv').value;
   if(!pid){alert('Izaberite predmet.');return;}if(!dat){alert('Unesite datum.');return;}if(!naziv){alert('Izaberite naziv radnje.');return;}
-  var attachments=[];
-  if(_tip==='podnesak'){
-    try{attachments=await storeFiles(document.getElementById('ra-files').files);}catch(e){console.error(e);alert('Datoteke nisu mogle da se sačuvaju.');return;}
+  var fileInput=document.getElementById('ra-files');
+  if(_tip==='podnesak' && fileInput && fileInput.files && fileInput.files.length){
+    alert('Zajedničko čuvanje dokumenata još nije povezano. Prvo ćemo povezati R2 skladište, pa će podnesci biti dostupni svim korisnicima.');
+    return;
   }
-  D.ra.push({id:Date.now().toString(),pid:pid,dat:dat,vr:document.getElementById('ra-vr').value,sala:document.getElementById('ra-sala').value.trim(),nap:document.getElementById('ra-nap').value.trim(),tip:_tip,naziv:naziv,status:_tip==='rociste'?_st:'done',files:attachments});
-  save();closeM('radnja');scheduleAlarms();render();document.getElementById('ra-files').value='';if(calSel)renderCal();
+  var obj={id:Date.now().toString(),pid:pid,dat:dat,vr:document.getElementById('ra-vr').value,sala:document.getElementById('ra-sala').value.trim(),nap:document.getElementById('ra-nap').value.trim(),tip:_tip,naziv:naziv,status:_tip==='rociste'?_st:'done',files:[]};
+  try{await dbMutate({entity:'action',action:'create',record:obj});}catch(e){dbError(e);return;}
+  D.ra.push(obj);
+  closeM('radnja');scheduleAlarms();render();if(fileInput)fileInput.value='';if(calSel)renderCal();
 }
