@@ -9,12 +9,18 @@ export async function onRequestPost(context) {
   try {
     const body = await context.request.json();
     const endpoint = String(body && body.endpoint || '').trim();
+    const p256dh = String(body && body.keys && body.keys.p256dh || '').trim();
+    const auth = String(body && body.keys && body.keys.auth || '').trim();
     if (!endpoint || !endpoint.startsWith('https://')) return json({ error: 'Invalid push endpoint.' }, 400);
+    if (!p256dh || !auth) return json({ error: 'Missing push encryption keys.' }, 400);
 
-    await db.prepare(`INSERT INTO push_subscriptions (endpoint)
-      VALUES (?)
-      ON CONFLICT(endpoint) DO UPDATE SET updated_at = CURRENT_TIMESTAMP`)
-      .bind(endpoint).run();
+    await db.prepare(`INSERT INTO push_subscriptions (endpoint, p256dh, auth)
+      VALUES (?, ?, ?)
+      ON CONFLICT(endpoint) DO UPDATE SET
+        p256dh = excluded.p256dh,
+        auth = excluded.auth,
+        updated_at = CURRENT_TIMESTAMP`)
+      .bind(endpoint, p256dh, auth).run();
 
     return json({ ok: true });
   } catch (error) {
