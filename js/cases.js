@@ -72,7 +72,7 @@ async function pTariff(){
     el.style.cursor='default';
     el.title='';
     el.onclick=function(ev){if(ev.target.closest&&ev.target.closest('.itr-pick'))return;pHideTariff();};
-    el.innerHTML='<div style="font-size:10px;font-weight:700;color:var(--gd2);margin-bottom:6px">'+result.title+'</div>'
+    el.innerHTML='<div style="font-size:10px;font-weight:700;color:var(--gd2);margin-bottom:6px">'+esc(result.title)+'</div>'
       +'<div class="itr-r"><span>Podnesak:</span>'+pTariffPrice(t.pod)+'</div>'
       +'<div class="itr-r"><span>Ročište:</span>'+pTariffPrice(t.roc)+'</div>'
       +'<div class="itr-r"><span>Neodržano:</span>'+pTariffPrice(t.neo)+'</div>'
@@ -86,13 +86,21 @@ async function savePredmet(){
   var br=document.getElementById('p-br').value.trim();var tuz=document.getElementById('p-tuz').value.trim();
   if(!br||!tuz){alert('Unesite broj predmeta i klijenta.');return;}
   var vrsta=document.getElementById('p-vrsta').value;var cfg=getCaseCfg(vrsta);
-  var obj={id:Date.now().toString(),br:br,tuz:tuz,tuz2:document.getElementById('p-tuz2').value.trim(),klijentUloga:_pKU,lbl1:cfg.s1,lbl2:cfg.s2||'',sud:document.getElementById('p-sud').value.trim(),tipSuda:_pSud,tel:document.getElementById('p-tel').value.trim().replace(/\s/g,''),vrsta:vrsta,plac:parseFloat(document.getElementById('p-plac').value)||0,bel:document.getElementById('p-bel').value.trim(),tipTuzilastva:cfg.isProsecution?_pTuz:'',ktn:document.getElementById('p-ktn').value.trim(),jtuz:document.getElementById('p-jtuz').value.trim(),faza:document.getElementById('p-faza').value};
+  var assigned=document.getElementById('p-assigned');
+  var obj={id:Date.now().toString(),br:br,tuz:tuz,tuz2:document.getElementById('p-tuz2').value.trim(),klijentUloga:_pKU,lbl1:cfg.s1,lbl2:cfg.s2||'',sud:document.getElementById('p-sud').value.trim(),tipSuda:_pSud,tel:document.getElementById('p-tel').value.trim().replace(/\s/g,''),vrsta:vrsta,plac:parseFloat(document.getElementById('p-plac').value)||0,uplate:[],bel:document.getElementById('p-bel').value.trim(),tipTuzilastva:cfg.isProsecution?_pTuz:'',ktn:document.getElementById('p-ktn').value.trim(),jtuz:document.getElementById('p-jtuz').value.trim(),faza:document.getElementById('p-faza').value,assignedUserId:assigned?assigned.value:(CURRENT_USER?CURRENT_USER.id:'')};
+  var au=USERS.find(function(x){return x.id===obj.assignedUserId;});obj.assignedUserName=au?au.displayName:'';
   if(cfg.isCriminal){obj.uloga=_pUloga;obj.sld=_pUloga==='osteceni'?false:_pSld;obj.kazna=parseInt(document.getElementById('p-kazna').value)||0;obj.kdNaziv=document.getElementById('p-kd').value.trim();}
   else{obj.neprocenjiv=cfg.tariffFamily==='civil'&&!_pProcenjiv;obj.nproIdx=obj.neprocenjiv?parseInt(document.getElementById('p-npro').value||0):null;obj.vred=obj.neprocenjiv?0:(parseFloat(document.getElementById('p-vred').value)||0);}
-  try{await dbMutate({entity:'case',action:'create',record:obj});}catch(e){dbError(e);return;}
+  try{
+    var result=await dbMutate({entity:'case',action:'create',record:obj});
+    if(result&&result.initial_payment){
+      var ip=result.initial_payment;obj.uplate=[{id:ip.id,amount:Number(ip.amount||0),date:ip.date,notes:ip.notes||'',createdByName:CURRENT_USER?CURRENT_USER.displayName:''}];
+      obj.plac=obj.uplate.reduce(function(sum,x){return sum+Number(x.amount||0);},0);
+    }
+  }catch(e){dbError(e);return;}
   D.p.push(obj);closeM('predmet');render();
   ['p-br','p-tuz','p-tuz2','p-sud','p-tel','p-vred','p-plac','p-bel','p-kd','p-ktn','p-jtuz'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
-  document.getElementById('p-itr').style.display='none';document.getElementById('p-kdi').classList.remove('open');document.getElementById('p-zw').style.display='none';document.getElementById('p-vrsta').value=SCFG.parnicni?'parnicni':Object.keys(SCFG)[0];pProcenjiv(true);pVrsta();pUloga('okrivljeni');pSld(false);pSud('osnovni');pSetTuz('osnovno');
+  document.getElementById('p-itr').style.display='none';document.getElementById('p-kdi').classList.remove('open');document.getElementById('p-zw').style.display='none';document.getElementById('p-vrsta').value=SCFG.parnicni?'parnicni':Object.keys(SCFG)[0];if(assigned&&CURRENT_USER)assigned.value=CURRENT_USER.id;pProcenjiv(true);pVrsta();pUloga('okrivljeni');pSld(false);pSud('osnovni');pSetTuz('osnovno');
 }
 
 (function(){
