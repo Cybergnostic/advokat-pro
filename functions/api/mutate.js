@@ -8,16 +8,32 @@ function requireFields(obj, fields) {
   }
 }
 
-async function deleteR2Keys(bucket, rows) {
-  if (!bucket || !rows || !rows.length) return;
+async function driveDelete(context, driveFileId) {
+  if (!driveFileId) return;
+  const url = context.env.GDRIVE_URL;
+  const secret = context.env.GDRIVE_SECRET;
+  if (!url || !secret) throw new Error('Google Drive storage is not configured.');
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ op: 'delete', id: driveFileId, secret }),
+    redirect: 'follow'
+  });
+  if (!res.ok) throw new Error(`Google Drive bridge returned HTTP ${res.status}.`);
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || 'Google Drive delete failed.');
+}
+
+async function deleteDriveFiles(context, rows) {
+  if (!rows || !rows.length) return;
   for (const row of rows) {
-    if (row.r2_key) await bucket.delete(row.r2_key);
+    if (row.r2_key) await driveDelete(context, row.r2_key);
   }
 }
 
 export async function onRequestPost(context) {
   const db = context.env.DB;
-  const bucket = context.env.FILES;
   if (!db) return json({ error: 'D1 binding DB is not configured.' }, 500);
 
   try {
@@ -45,7 +61,7 @@ export async function onRequestPost(context) {
       requireFields({ id }, ['id']);
       const files = await db.prepare(`SELECT a.r2_key FROM attachments a
         JOIN actions r ON r.id = a.action_id WHERE r.case_id = ?`).bind(id).all();
-      await deleteR2Keys(bucket, files.results || []);
+      await deleteDriveFiles(context, files.results || []);
       await db.prepare('DELETE FROM cases WHERE id = ?').bind(id).run();
       return json({ ok: true });
     }
@@ -73,7 +89,7 @@ export async function onRequestPost(context) {
     if (entity === 'action' && action === 'delete') {
       requireFields({ id }, ['id']);
       const files = await db.prepare('SELECT r2_key FROM attachments WHERE action_id = ?').bind(id).all();
-      await deleteR2Keys(bucket, files.results || []);
+      await deleteDriveFiles(context, files.results || []);
       await db.prepare('DELETE FROM actions WHERE id = ?').bind(id).run();
       return json({ ok: true });
     }
