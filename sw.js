@@ -1,4 +1,4 @@
-const CACHE_NAME = 'advokat-pro-v15';
+const CACHE_NAME = 'advokat-pro-v16';
 const APP_FILES = [
   "./",
   "./index.html",
