@@ -1,4 +1,4 @@
-import { sendPushToAll, sendPushToUser } from '../functions/_lib/webpush.js';
+import { sendPushToUser } from '../functions/_lib/webpush.js';
 
 const TZ = 'Europe/Belgrade';
 
@@ -41,14 +41,16 @@ async function markSent(db, key) {
 
 async function dispatchOnce(env, key, userId, payload) {
   if (await alreadySent(env.DB, key)) return true;
-  const result = userId
-    ? await sendPushToUser(env, userId, payload)
-    : await sendPushToAll(env, payload);
+  if (!userId) {
+    console.warn('Reminder skipped because the case has no assigned user', key);
+    return false;
+  }
+  const result = await sendPushToUser(env, userId, payload);
   if (result.delivered > 0) {
     await markSent(env.DB, key);
     return true;
   }
-  console.warn('Reminder not marked sent because no device received it', key, result);
+  console.warn('Reminder not marked sent because no assigned-user device received it', key, result);
   return false;
 }
 
@@ -68,8 +70,6 @@ async function sendOneHourHearingReminders(env, scheduledMs) {
     const hearingMinutes = timeToMinutes(r.action_time);
     if (hearingMinutes == null) continue;
     const minutesUntil = hearingMinutes - nowMinutes;
-    // Five-minute retry window. If the push service fails exactly one hour before,
-    // the next cron runs still have a chance to deliver it.
     if (minutesUntil < 55 || minutesUntil > 60) continue;
 
     await dispatchOnce(env, `hearing-1h:${r.id}:${r.action_date}:${String(r.action_time).slice(0,5)}`, r.assigned_user_id, {
