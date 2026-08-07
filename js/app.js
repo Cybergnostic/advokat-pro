@@ -20,6 +20,17 @@
   }
 })();
 
+// Remember which case detail is currently being viewed so contextual actions
+// such as "+ Rok" can reuse that case instead of asking for it again.
+var activeDetailCaseId=null;
+if(typeof openDetail==='function'){
+  var openDetailBase=openDetail;
+  openDetail=function(id){
+    activeDetailCaseId=id;
+    return openDetailBase(id);
+  };
+}
+
 // INIT
 async function initApp(){
   initSW();
