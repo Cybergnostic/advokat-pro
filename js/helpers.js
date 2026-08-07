@@ -9,6 +9,7 @@ var TUZL={osnovno:'Osnovno tužilaštvo',vise:'Više tužilaštvo',org_kriminal:
 var PST={pravnosnazno:'✅ Pravnosnažno',zalbeno:'⚠ Žalbeni postupak',izvrsno:'⚙ Izvršni postupak',delimicno:'◑ Delimično naplaćeno',placeno:'💰 Naplaćeno'};
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function safeTel(v){return String(v||'').replace(/[^0-9+*#,;]/g,'').slice(0,60);}
+function todayIso(){var d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function fmt(n){return n?n.toLocaleString('sr-RS')+' din':'—';}
 function fmtD(iso){if(!iso)return'';return new Date(iso+'T00:00').toLocaleDateString('sr-RS',{day:'numeric',month:'long',year:'numeric'});}
 function fmtDs(iso){if(!iso)return'';return new Date(iso+'T00:00').toLocaleDateString('sr-RS',{day:'numeric',month:'short'});}
