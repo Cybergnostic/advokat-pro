@@ -33,6 +33,17 @@ function pUloga(u){
 function pSld(v){_pSld=v;document.getElementById('pu-ugo').className='tg'+(v?'':' ab');document.getElementById('pu-sld').className='tg'+(v?' ap':'');}
 function pSud(s){_pSud=s;['os','vs','ps'].forEach(function(x,i){var k=['osnovni','visi','privredni'][i];document.getElementById('ps-'+x).className='tg'+(s===k?' ag':'');});}
 function pSetTuz(t){_pTuz=t;['pt-os','pt-vs','pt-ok','pt-ko'].forEach(function(id,i){var k=['osnovno','vise','org_kriminal','korupcija'][i];document.getElementById(id).className='tg'+(t===k?' ag':'');});}
+function pHideTariff(){
+  var el=document.getElementById('p-itr');
+  if(el) el.style.display='none';
+}
+function pTariffBlur(){
+  setTimeout(function(){
+    var a=document.activeElement;
+    if(a && (a.id==='p-vred'||a.id==='p-npro')) return;
+    pHideTariff();
+  },100);
+}
 function pTariff(){
   var vrsta=document.getElementById('p-vrsta').value;
   var el=document.getElementById('p-itr'); var t=null; var title='';
@@ -43,7 +54,13 @@ function pTariff(){
     t=(vrsta==='parnicni'||vrsta==='vanparnicni')?getTarP(v):vrsta==='izvrsni'?getTarI(v):null;
     title='Vrednost spora';
   }
-  if(t){el.style.display='block';el.innerHTML='<div style="font-size:10px;font-weight:700;color:var(--gd2);margin-bottom:6px">'+title+'</div><div class="itr-r"><span>Podnesak:</span><span>'+fmt(t.pod)+'</span></div><div class="itr-r"><span>Ročište:</span><span>'+fmt(t.roc)+'</span></div><div class="itr-r"><span>Neodržano:</span><span>'+fmt(t.neo)+'</span></div><div class="itr-r"><span>Žalba:</span><span>'+fmt(t.zal)+'</span></div>';}
+  if(t){
+    el.style.display='block';
+    el.style.cursor='pointer';
+    el.title='Kliknite za zatvaranje';
+    el.onmousedown=function(ev){ev.preventDefault();pHideTariff();};
+    el.innerHTML='<div style="font-size:10px;font-weight:700;color:var(--gd2);margin-bottom:6px">'+title+'</div><div class="itr-r"><span>Podnesak:</span><span>'+fmt(t.pod)+'</span></div><div class="itr-r"><span>Ročište:</span><span>'+fmt(t.roc)+'</span></div><div class="itr-r"><span>Neodržano:</span><span>'+fmt(t.neo)+'</span></div><div class="itr-r"><span>Žalba:</span><span>'+fmt(t.zal)+'</span></div>';
+  }
   else el.style.display='none';
 }
 async function savePredmet(){
@@ -58,3 +75,10 @@ async function savePredmet(){
   ['p-br','p-tuz','p-tuz2','p-sud','p-tel','p-vred','p-plac','p-bel','p-kd','p-ktn','p-jtuz'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
   document.getElementById('p-itr').style.display='none';document.getElementById('p-kdi').classList.remove('open');document.getElementById('p-zw').style.display='none';document.getElementById('p-vrsta').value='parnicni';pProcenjiv(true);pVrsta();pUloga('okrivljeni');pSld(false);pSud('osnovni');pSetTuz('osnovno');
 }
+
+(function(){
+  var vred=document.getElementById('p-vred');
+  var npro=document.getElementById('p-npro');
+  if(vred){vred.addEventListener('focus',pTariff);vred.addEventListener('blur',pTariffBlur);}
+  if(npro){npro.addEventListener('focus',pTariff);npro.addEventListener('blur',pTariffBlur);}
+})();
