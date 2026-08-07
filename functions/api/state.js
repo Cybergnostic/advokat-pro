@@ -1,4 +1,6 @@
-function rowsToState(cases, actions, deadlines, claims, attachments) {
+import { calculateActionFee, loadDomain } from '../_lib/domain.js';
+
+function rowsToState(cases, actions, deadlines, claims, attachments, domain) {
   const filesByAction = new Map();
   for (const f of attachments) {
     if (!filesByAction.has(f.action_id)) filesByAction.set(f.action_id, []);
@@ -10,6 +12,8 @@ function rowsToState(cases, actions, deadlines, claims, attachments) {
       r2Key: f.r2_key,
     });
   }
+
+  const caseById = new Map(cases.map((x) => [x.id, x]));
 
   const p = cases.map((x) => ({
     id: x.id,
@@ -48,6 +52,7 @@ function rowsToState(cases, actions, deadlines, claims, attachments) {
     tip: x.action_type,
     naziv: x.name,
     status: x.status,
+    iznos: calculateActionFee(domain, x, caseById.get(x.case_id)),
     files: filesByAction.get(x.id) || [],
   }));
 
@@ -89,12 +94,13 @@ export async function onRequestGet(context) {
       return Response.json({ error: 'D1 binding DB is not configured.' }, { status: 500 });
     }
 
-    const [cases, actions, deadlines, claims, attachments] = await db.batch([
-      db.prepare('SELECT * FROM cases ORDER BY created_at ASC'),
-      db.prepare('SELECT * FROM actions ORDER BY action_date ASC, action_time ASC, created_at ASC'),
-      db.prepare('SELECT * FROM deadlines ORDER BY due_date ASC, created_at ASC'),
-      db.prepare('SELECT * FROM claims ORDER BY created_at ASC'),
-      db.prepare('SELECT * FROM attachments ORDER BY created_at ASC'),
+    const [cases, actions, deadlines, claims, attachments, domain] = await Promise.all([
+      db.prepare('SELECT * FROM cases ORDER BY created_at ASC').all(),
+      db.prepare('SELECT * FROM actions ORDER BY action_date ASC, action_time ASC, created_at ASC').all(),
+      db.prepare('SELECT * FROM deadlines ORDER BY due_date ASC, created_at ASC').all(),
+      db.prepare('SELECT * FROM claims ORDER BY created_at ASC').all(),
+      db.prepare('SELECT * FROM attachments ORDER BY created_at ASC').all(),
+      loadDomain(db),
     ]);
 
     return Response.json(
@@ -103,7 +109,8 @@ export async function onRequestGet(context) {
         actions.results || [],
         deadlines.results || [],
         claims.results || [],
-        attachments.results || []
+        attachments.results || [],
+        domain
       ),
       { headers: { 'Cache-Control': 'no-store' } }
     );
