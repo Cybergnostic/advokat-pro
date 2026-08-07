@@ -42,10 +42,28 @@ function openM(type,pid,dat){
     document.getElementById('rk-search').value='';
     document.getElementById('rk-pred').value='';
     document.getElementById('rk-ac-sel').className='ac-sel';
+    document.getElementById('rk-ac-res').classList.remove('open');
     document.getElementById('rk-dat').value='';
     document.getElementById('rk-kraj').value='';
     delete document.getElementById('rk-kraj').dataset.iso;
     document.getElementById('rk-nap').value='';
+
+    // The detail modal's "+ Rok" already has a case context. Reuse it.
+    // A generic "+ Rok" click from the Rokovi page still starts with no case selected.
+    var fromDetail=false;
+    try{
+      fromDetail=!!(window.event&&window.event.target&&window.event.target.closest&&window.event.target.closest('#mo-detail'));
+    }catch(_){}
+    if(!pid&&fromDetail&&typeof activeDetailCaseId!=='undefined') pid=activeDetailCaseId;
+    if(pid){
+      var rp=D.p.find(function(x){return x.id===pid;});
+      if(rp){
+        document.getElementById('rk-search').value=rp.br;
+        document.getElementById('rk-pred').value=rp.id;
+        document.getElementById('rk-ac-sel').innerHTML='<b>'+rp.br+'</b> — '+rp.tuz;
+        document.getElementById('rk-ac-sel').className='ac-sel show';
+      }
+    }
   }
   if(type==='pot'){
     document.getElementById('pot-search').value='';
