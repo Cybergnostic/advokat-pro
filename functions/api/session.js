@@ -14,14 +14,22 @@ export async function onRequestGet(context) {
 
     const [current, users] = await Promise.all([
       resolveUser(context, false),
-      db.prepare(`SELECT id, display_name, role FROM users
+      db.prepare(`SELECT id, display_name, role, access_email FROM users
         WHERE active = 1 ORDER BY CASE WHEN role = 'dev' THEN 2 ELSE 1 END, display_name COLLATE NOCASE`).all()
     ]);
+
+    const all = (users.results || []).map((u) => ({
+      id: u.id,
+      displayName: u.display_name,
+      role: u.role,
+      claimed: !!u.access_email
+    }));
 
     return json({
       current: current ? { id: current.id, displayName: current.display_name, role: current.role } : null,
       needsClaim: !current,
-      users: (users.results || []).map((u) => ({ id: u.id, displayName: u.display_name, role: u.role }))
+      users: all.map(({ id, displayName, role }) => ({ id, displayName, role })),
+      claimableUsers: all.filter((u) => !u.claimed).map(({ id, displayName, role }) => ({ id, displayName, role }))
     });
   } catch (error) {
     console.error('GET /api/session failed', error);
