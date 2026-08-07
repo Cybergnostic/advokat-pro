@@ -10,6 +10,7 @@ function pVrsta(){
   document.getElementById('p-sud-w').style.display=isT?'none':'block';
   document.getElementById('pu-osu').style.display=isT?'block':'none';
   document.getElementById('p-itr').style.display='none';
+  pHideVredSuggestions();
   updateStranke();
   if(isT && _pUloga!=='osteceni') pUloga(_pUloga==='osumnjiceni'?'osumnjiceni':'okrivljeni');
   if(!isT && _pUloga==='osumnjiceni') pUloga('okrivljeni');
@@ -21,6 +22,7 @@ function pProcenjiv(v){
   document.getElementById('pp-neproc').className='tg'+(!_pProcenjiv?' ag':'');
   document.getElementById('p-vred-wrap').style.display=_pProcenjiv?'block':'none';
   document.getElementById('p-npro-wrap').style.display=_pProcenjiv?'none':'block';
+  if(!_pProcenjiv) pHideVredSuggestions();
   pTariff();
 }
 function pUloga(u){
@@ -63,6 +65,74 @@ function pTariff(){
   }
   else el.style.display='none';
 }
+
+function pVredBox(){
+  var box=document.getElementById('p-vred-sug');
+  if(box) return box;
+  var wrap=document.getElementById('p-vred-wrap');
+  if(!wrap) return null;
+  wrap.style.position='relative';
+  box=document.createElement('div');
+  box.id='p-vred-sug';
+  box.className='ac-res';
+  box.style.top='calc(100% - 1px)';
+  box.style.zIndex='80';
+  wrap.appendChild(box);
+  return box;
+}
+function pVredValues(){
+  var seen={}; var vals=[];
+  (D.p||[]).forEach(function(p){
+    var v=Number(p.vred||0);
+    if(v>0 && !seen[v]){seen[v]=true;vals.push(v);}
+  });
+  return vals.sort(function(a,b){return b-a;});
+}
+function pHideVredSuggestions(){
+  var box=document.getElementById('p-vred-sug');
+  if(box) box.classList.remove('open');
+}
+function pPickVred(value){
+  var input=document.getElementById('p-vred');
+  if(!input) return;
+  input.value=String(value);
+  pHideVredSuggestions();
+  pTariff();
+  input.focus();
+}
+function pVredSuggest(){
+  var input=document.getElementById('p-vred');
+  var box=pVredBox();
+  if(!input||!box||!_pProcenjiv) return;
+  var q=String(input.value||'').replace(/\D/g,'');
+  var vals=pVredValues().filter(function(v){return !q || String(Math.trunc(v)).indexOf(q)===0;}).slice(0,8);
+  box.innerHTML='';
+  if(!vals.length){box.classList.remove('open');return;}
+  vals.forEach(function(v){
+    var item=document.createElement('div');
+    item.className='ac-item';
+    var br=document.createElement('div');
+    br.className='ac-br';
+    br.textContent=v.toLocaleString('sr-RS')+' din';
+    var sub=document.createElement('div');
+    sub.className='ac-sub';
+    sub.textContent='Kliknite da unesete vrednost';
+    item.appendChild(br);item.appendChild(sub);
+    item.addEventListener('mousedown',function(ev){ev.preventDefault();pPickVred(v);});
+    item.addEventListener('touchstart',function(ev){ev.preventDefault();pPickVred(v);},{passive:false});
+    box.appendChild(item);
+  });
+  box.classList.add('open');
+}
+async function pRefreshVredSuggestions(){
+  try{await loadSharedState();}catch(_){ }
+  pVredSuggest();
+}
+function pVredBlur(){
+  setTimeout(function(){pHideVredSuggestions();},150);
+  pTariffBlur();
+}
+
 async function savePredmet(){
   var br=document.getElementById('p-br').value.trim(); var tuz=document.getElementById('p-tuz').value.trim();
   if(!br||!tuz){alert('Unesite broj predmeta i klijenta.');return;}
@@ -73,12 +143,16 @@ async function savePredmet(){
   try{await dbMutate({entity:'case',action:'create',record:obj});}catch(e){dbError(e);return;}
   D.p.push(obj);closeM('predmet');render();
   ['p-br','p-tuz','p-tuz2','p-sud','p-tel','p-vred','p-plac','p-bel','p-kd','p-ktn','p-jtuz'].forEach(function(id){var e=document.getElementById(id);if(e)e.value='';});
-  document.getElementById('p-itr').style.display='none';document.getElementById('p-kdi').classList.remove('open');document.getElementById('p-zw').style.display='none';document.getElementById('p-vrsta').value='parnicni';pProcenjiv(true);pVrsta();pUloga('okrivljeni');pSld(false);pSud('osnovni');pSetTuz('osnovno');
+  pHideVredSuggestions();document.getElementById('p-itr').style.display='none';document.getElementById('p-kdi').classList.remove('open');document.getElementById('p-zw').style.display='none';document.getElementById('p-vrsta').value='parnicni';pProcenjiv(true);pVrsta();pUloga('okrivljeni');pSld(false);pSud('osnovni');pSetTuz('osnovno');
 }
 
 (function(){
   var vred=document.getElementById('p-vred');
   var npro=document.getElementById('p-npro');
-  if(vred){vred.addEventListener('focus',pTariff);vred.addEventListener('blur',pTariffBlur);}
+  if(vred){
+    vred.addEventListener('focus',function(){pTariff();pRefreshVredSuggestions();});
+    vred.addEventListener('input',function(){pTariff();pVredSuggest();});
+    vred.addEventListener('blur',pVredBlur);
+  }
   if(npro){npro.addEventListener('focus',pTariff);npro.addEventListener('blur',pTariffBlur);}
 })();
