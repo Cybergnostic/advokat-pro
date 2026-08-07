@@ -129,12 +129,15 @@ async function sendToSubscriptions(env, subscriptions, payload) {
 
 export async function sendPushToUser(env, userId, payload) {
   if (!userId) return { attempted: 0, delivered: 0, failed: 0 };
-  const rows = await env.DB.prepare(`SELECT endpoint, p256dh, auth FROM push_subscriptions
-    WHERE user_id = ?`).bind(userId).all();
+  const rows = await env.DB.prepare(`SELECT p.endpoint, p.p256dh, p.auth
+    FROM push_subscriptions p JOIN users u ON u.id = p.user_id
+    WHERE p.user_id = ? AND u.active = 1`).bind(userId).all();
   return sendToSubscriptions(env, rows.results || [], payload);
 }
 
 export async function sendPushToAll(env, payload) {
-  const rows = await env.DB.prepare('SELECT endpoint, p256dh, auth FROM push_subscriptions').all();
+  const rows = await env.DB.prepare(`SELECT p.endpoint, p.p256dh, p.auth
+    FROM push_subscriptions p LEFT JOIN users u ON u.id = p.user_id
+    WHERE p.user_id IS NULL OR u.active = 1`).all();
   return sendToSubscriptions(env, rows.results || [], payload);
 }
