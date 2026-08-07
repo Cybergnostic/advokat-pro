@@ -85,6 +85,29 @@ async function drivePost(context, payload) {
   return data;
 }
 
+async function driveDownload(context, id) {
+  // New bridge: POST keeps the shared secret out of URLs. During rollout, fall
+  // back to the old GET bridge so Pages can be deployed before Apps Script is
+  // manually redeployed. Remove this fallback once the new bridge is confirmed.
+  try {
+    return await drivePost(context, { op: 'download', id });
+  } catch (postError) {
+    const base = context.env.GDRIVE_URL;
+    const secret = context.env.GDRIVE_SECRET;
+    if (!base || !secret) throw postError;
+    const url = new URL(base);
+    url.searchParams.set('op', 'download');
+    url.searchParams.set('id', id);
+    url.searchParams.set('secret', secret);
+    const res = await fetch(url.toString(), { redirect: 'follow' });
+    if (!res.ok) throw postError;
+    const data = await res.json();
+    if (!data.ok) throw postError;
+    console.warn('Google Drive bridge is using legacy GET download fallback; redeploy Code.gs.');
+    return data;
+  }
+}
+
 export async function onRequestPost(context) {
   const db = context.env.DB;
   if (!db) return json({ error: 'D1 binding DB is not configured.' }, 500);
@@ -127,8 +150,6 @@ export async function onRequestPost(context) {
           id, actionId, name, type, Number(file.size), uploaded.id, currentUser.id
         ).run();
     } catch (error) {
-      // The DB write failed, so this upload never became a recoverable app record.
-      // It is safe to remove the just-created Drive object here.
       try { await drivePost(context, { op: 'delete', id: uploaded.id }); } catch (_) {}
       throw error;
     }
@@ -162,8 +183,7 @@ export async function onRequestGet(context) {
       .bind(id).first();
     if (!row) return json({ error: 'File not found.' }, 404);
 
-    // POST keeps the shared Drive secret out of URLs and intermediary URL logs.
-    const stored = await drivePost(context, { op: 'download', id: row.r2_key });
+    const stored = await driveDownload(context, row.r2_key);
     const bytes = fromBase64(stored.data || '');
     const ext = extension(row.file_name);
     const type = MIME_BY_EXTENSION[ext] || 'application/octet-stream';
@@ -200,8 +220,6 @@ export async function onRequestDelete(context) {
       WHERE f.id = ? AND f.deleted_at IS NULL`).bind(id).first();
     if (!row) return json({ ok: true });
 
-    // Recoverable deletion: keep the private Drive object and mark only the app
-    // record deleted. A future trash/restore UI can bring it back.
     await db.prepare(`UPDATE attachments SET deleted_at = CURRENT_TIMESTAMP, deleted_by = ?
       WHERE id = ? AND deleted_at IS NULL`).bind(currentUser.id, id).run();
     try {
