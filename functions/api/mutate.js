@@ -1,4 +1,5 @@
 import { sendPushToAll } from '../_lib/webpush.js';
+import { calculateActionFee, loadDomain } from '../_lib/domain.js';
 
 function json(data, status = 200) {
   return Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
@@ -34,6 +35,24 @@ async function deleteDriveFiles(context, rows) {
   }
 }
 
+async function validateCaseDomain(db, record) {
+  const type = await db.prepare('SELECT code, default_role FROM case_types WHERE code = ? AND active = 1')
+    .bind(record.vrsta).first();
+  if (!type) throw new Error('Nepoznata vrsta postupka.');
+
+  if (record.klijentUloga) {
+    const role = await db.prepare('SELECT code FROM case_roles WHERE case_type = ? AND code = ?')
+      .bind(record.vrsta, record.klijentUloga).first();
+    if (!role) throw new Error('Nepoznata uloga klijenta za izabrani postupak.');
+  }
+}
+
+async function actionFeeFor(db, actionRow, caseRow) {
+  if (!actionRow || !caseRow) return 0;
+  const domain = await loadDomain(db);
+  return calculateActionFee(domain, actionRow, caseRow);
+}
+
 export async function onRequestPost(context) {
   const db = context.env.DB;
   if (!db) return json({ error: 'D1 binding DB is not configured.' }, 500);
@@ -44,6 +63,7 @@ export async function onRequestPost(context) {
 
     if (entity === 'case' && action === 'create') {
       requireFields(record, ['id', 'br', 'tuz', 'vrsta']);
+      await validateCaseDomain(db, record);
       await db.prepare(`INSERT INTO cases (
         id, case_number, client, other_party, client_role, label1, label2, court, court_type, phone,
         case_type, paid_amount, notes, prosecution_type, prosecution_number, public_prosecutor, phase,
@@ -87,13 +107,29 @@ export async function onRequestPost(context) {
 
     if (entity === 'action' && action === 'create') {
       requireFields(record, ['id', 'pid', 'dat', 'tip', 'naziv']);
+      const caseRow = await db.prepare('SELECT * FROM cases WHERE id = ?').bind(record.pid).first();
+      if (!caseRow) throw new Error('Predmet ne postoji.');
+
+      const actionRow = {
+        id: record.id,
+        case_id: record.pid,
+        action_date: record.dat,
+        action_time: record.vr || '',
+        courtroom: record.sala || '',
+        notes: record.nap || '',
+        action_type: record.tip,
+        name: record.naziv,
+        status: record.status || 'done'
+      };
+      const feeAmount = await actionFeeFor(db, actionRow, caseRow);
+
       await db.prepare(`INSERT INTO actions
         (id, case_id, action_date, action_time, courtroom, notes, action_type, name, status)
         VALUES (?,?,?,?,?,?,?,?,?)`).bind(
-        record.id, record.pid, record.dat, record.vr || '', record.sala || '', record.nap || '',
-        record.tip, record.naziv, record.status || 'done'
+        actionRow.id, actionRow.case_id, actionRow.action_date, actionRow.action_time, actionRow.courtroom,
+        actionRow.notes, actionRow.action_type, actionRow.name, actionRow.status
       ).run();
-      return json({ ok: true });
+      return json({ ok: true, fee_amount: feeAmount });
     }
 
     if (entity === 'action' && action === 'delete') {
@@ -109,7 +145,10 @@ export async function onRequestPost(context) {
       if (fields && fields.status !== undefined) {
         await db.prepare('UPDATE actions SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
           .bind(fields.status, id).run();
-        return json({ ok: true });
+        const actionRow = await db.prepare('SELECT * FROM actions WHERE id = ?').bind(id).first();
+        const caseRow = actionRow ? await db.prepare('SELECT * FROM cases WHERE id = ?').bind(actionRow.case_id).first() : null;
+        const feeAmount = await actionFeeFor(db, actionRow, caseRow);
+        return json({ ok: true, fee_amount: feeAmount });
       }
     }
 
