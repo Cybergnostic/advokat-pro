@@ -1,8 +1,40 @@
 // SERVICE WORKER + NOTIFICATIONS
 var swReg = null;
+var VAPID_PUBLIC_KEY = 'BC8zQ_raNZBn5HL1-pd9l_ClLL0t7VNlAVrxgJBr2v7XDLNmJTcxRjIddbacBXi0sZqY7TraT-RMMmMuGVaDgb8';
+
+function urlBase64ToUint8Array(base64String){
+  var padding='='.repeat((4-base64String.length%4)%4);
+  var base64=(base64String+padding).replace(/-/g,'+').replace(/_/g,'/');
+  var raw=atob(base64), out=new Uint8Array(raw.length);
+  for(var i=0;i<raw.length;i++) out[i]=raw.charCodeAt(i);
+  return out;
+}
+
+async function subscribeToPush(){
+  try{
+    if(!swReg || !('PushManager' in window) || permN()!=='granted') return;
+    var sub=await swReg.pushManager.getSubscription();
+    if(!sub){
+      sub=await swReg.pushManager.subscribe({
+        userVisibleOnly:true,
+        applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+    }
+    await fetch('/api/push/subscribe',{
+      method:'POST',
+      credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({endpoint:sub.endpoint})
+    });
+  }catch(e){ console.warn('Push subscription failed',e); }
+}
+
 function initSW(){
   if(!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('sw.js').then(function(r){ swReg = r; }).catch(function(){});
+  navigator.serviceWorker.register('sw.js').then(function(r){
+    swReg=r;
+    if(permN()==='granted') subscribeToPush();
+  }).catch(function(e){ console.warn('Service worker registration failed',e); });
 }
 function hasN(){ try{ return typeof Notification !== 'undefined'; }catch(e){ return false; } }
 function permN(){ try{ return hasN() ? Notification.permission : 'denied'; }catch(e){ return 'denied'; } }
@@ -10,9 +42,13 @@ function checkBanner(){ try{ if(hasN() && permN()==='default') document.getEleme
 function reqPerm(){
   try{
     if(!hasN()){ document.getElementById('npb').classList.remove('show'); return; }
-    Notification.requestPermission().then(function(p){
+    Notification.requestPermission().then(async function(p){
       document.getElementById('npb').classList.remove('show');
-      if(p==='granted'){ scheduleAlarms(); sendN('Advokat Pro','Notifikacije aktivirane!'); }
+      if(p==='granted'){
+        scheduleAlarms();
+        await subscribeToPush();
+        sendN('Advokat Pro','Notifikacije aktivirane!');
+      }
     });
   }catch(e){ document.getElementById('npb').classList.remove('show'); }
 }
