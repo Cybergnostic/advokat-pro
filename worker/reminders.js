@@ -1,4 +1,4 @@
-import { sendPushToAll } from '../functions/_lib/webpush.js';
+import { sendPushToAll, sendPushToUser } from '../functions/_lib/webpush.js';
 
 const TZ = 'Europe/Belgrade';
 
@@ -21,6 +21,16 @@ function fmtDate(iso) {
   return p.length === 3 ? `${p[2]}.${p[1]}.${p[0]}.` : iso;
 }
 
+function timeToMinutes(value) {
+  const m = String(value || '').match(/^(\d{2}):(\d{2})/);
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+}
+
+function inMorningRetryWindow(time) {
+  const minutes = timeToMinutes(time);
+  return minutes != null && minutes >= 8 * 60 && minutes <= 8 * 60 + 15;
+}
+
 async function alreadySent(db, key) {
   return !!(await db.prepare('SELECT event_key FROM push_reminder_log WHERE event_key = ?').bind(key).first());
 }
@@ -29,23 +39,41 @@ async function markSent(db, key) {
   await db.prepare('INSERT OR IGNORE INTO push_reminder_log (event_key) VALUES (?)').bind(key).run();
 }
 
-async function dispatchOnce(env, key, payload) {
-  if (await alreadySent(env.DB, key)) return;
-  await sendPushToAll(env, payload);
-  await markSent(env.DB, key);
+async function dispatchOnce(env, key, userId, payload) {
+  if (await alreadySent(env.DB, key)) return true;
+  const result = userId
+    ? await sendPushToUser(env, userId, payload)
+    : await sendPushToAll(env, payload);
+  if (result.delivered > 0) {
+    await markSent(env.DB, key);
+    return true;
+  }
+  console.warn('Reminder not marked sent because no device received it', key, result);
+  return false;
 }
 
 async function sendOneHourHearingReminders(env, scheduledMs) {
-  const target = localParts(scheduledMs + 60 * 60 * 1000);
-  const rows = await env.DB.prepare(`SELECT a.id, a.action_date, a.action_time, a.name, a.courtroom, c.case_number
+  const now = localParts(scheduledMs);
+  const nowMinutes = timeToMinutes(now.time);
+  if (nowMinutes == null) return;
+
+  const rows = await env.DB.prepare(`SELECT a.id, a.action_date, a.action_time, a.name, a.courtroom,
+      c.case_number, c.assigned_user_id
     FROM actions a JOIN cases c ON c.id = a.case_id
     WHERE a.action_type = 'rociste' AND a.status = 'buduci'
-      AND a.action_date = ? AND substr(a.action_time,1,5) = ?`)
-    .bind(target.date, target.time).all();
+      AND a.deleted_at IS NULL AND c.deleted_at IS NULL AND a.action_date = ?`)
+    .bind(now.date).all();
 
   for (const r of rows.results || []) {
-    await dispatchOnce(env, `hearing-1h:${r.id}:${r.action_date}:${target.time}`, {
-      title: '⚖ Ročište za 1 sat',
+    const hearingMinutes = timeToMinutes(r.action_time);
+    if (hearingMinutes == null) continue;
+    const minutesUntil = hearingMinutes - nowMinutes;
+    // Five-minute retry window. If the push service fails exactly one hour before,
+    // the next cron runs still have a chance to deliver it.
+    if (minutesUntil < 55 || minutesUntil > 60) continue;
+
+    await dispatchOnce(env, `hearing-1h:${r.id}:${r.action_date}:${String(r.action_time).slice(0,5)}`, r.assigned_user_id, {
+      title: '⚖ Ročište uskoro',
       body: `${r.case_number} — ${r.name} u ${String(r.action_time).slice(0,5)}${r.courtroom ? ', ' + r.courtroom : ''}`,
       tag: `hearing-1h-${r.id}`,
       url: './'
@@ -55,15 +83,17 @@ async function sendOneHourHearingReminders(env, scheduledMs) {
 
 async function sendEightAmReminders(env, scheduledMs) {
   const now = localParts(scheduledMs);
-  if (now.time !== '08:00') return;
+  if (!inMorningRetryWindow(now.time)) return;
   const tomorrow = localParts(scheduledMs + 24 * 60 * 60 * 1000).date;
 
-  const hearings = await env.DB.prepare(`SELECT a.id, a.action_time, a.name, a.courtroom, c.case_number
+  const hearings = await env.DB.prepare(`SELECT a.id, a.action_time, a.name, a.courtroom,
+      c.case_number, c.assigned_user_id
     FROM actions a JOIN cases c ON c.id = a.case_id
-    WHERE a.action_type = 'rociste' AND a.status = 'buduci' AND a.action_date = ?`)
+    WHERE a.action_type = 'rociste' AND a.status = 'buduci' AND a.action_date = ?
+      AND a.deleted_at IS NULL AND c.deleted_at IS NULL`)
     .bind(now.date).all();
   for (const r of hearings.results || []) {
-    await dispatchOnce(env, `hearing-day:${r.id}:${now.date}`, {
+    await dispatchOnce(env, `hearing-day:${r.id}:${now.date}`, r.assigned_user_id, {
       title: '📅 Ročište danas',
       body: `${r.case_number} — ${r.name}${r.action_time ? ' u ' + String(r.action_time).slice(0,5) : ''}${r.courtroom ? ', ' + r.courtroom : ''}`,
       tag: `hearing-day-${r.id}`,
@@ -71,11 +101,12 @@ async function sendEightAmReminders(env, scheduledMs) {
     });
   }
 
-  const dueToday = await env.DB.prepare(`SELECT d.id, d.due_date, d.notes, c.case_number
-    FROM deadlines d JOIN cases c ON c.id = d.case_id WHERE d.due_date = ?`)
+  const dueToday = await env.DB.prepare(`SELECT d.id, d.due_date, d.notes, c.case_number, c.assigned_user_id
+    FROM deadlines d JOIN cases c ON c.id = d.case_id
+    WHERE d.due_date = ? AND d.deleted_at IS NULL AND c.deleted_at IS NULL`)
     .bind(now.date).all();
   for (const r of dueToday.results || []) {
-    await dispatchOnce(env, `deadline-day:${r.id}:${now.date}`, {
+    await dispatchOnce(env, `deadline-day:${r.id}:${now.date}`, r.assigned_user_id, {
       title: '🔴 DANAS ističe rok!',
       body: `${r.case_number} — Poslednji dan je DANAS${r.notes ? ' · ' + r.notes : ''}`,
       tag: `deadline-day-${r.id}`,
@@ -83,11 +114,12 @@ async function sendEightAmReminders(env, scheduledMs) {
     });
   }
 
-  const dueTomorrow = await env.DB.prepare(`SELECT d.id, d.due_date, d.notes, c.case_number
-    FROM deadlines d JOIN cases c ON c.id = d.case_id WHERE d.due_date = ?`)
+  const dueTomorrow = await env.DB.prepare(`SELECT d.id, d.due_date, d.notes, c.case_number, c.assigned_user_id
+    FROM deadlines d JOIN cases c ON c.id = d.case_id
+    WHERE d.due_date = ? AND d.deleted_at IS NULL AND c.deleted_at IS NULL`)
     .bind(tomorrow).all();
   for (const r of dueTomorrow.results || []) {
-    await dispatchOnce(env, `deadline-tomorrow:${r.id}:${tomorrow}`, {
+    await dispatchOnce(env, `deadline-tomorrow:${r.id}:${tomorrow}`, r.assigned_user_id, {
       title: '⏰ Sutra ističe rok!',
       body: `${r.case_number} — Poslednji dan: ${fmtDate(r.due_date)}${r.notes ? ' · ' + r.notes : ''}`,
       tag: `deadline-tomorrow-${r.id}`,
