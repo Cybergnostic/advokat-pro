@@ -1,6 +1,6 @@
 // DELETE / UPDATE
 async function delPredmet(id){
-  if(!confirm('Obrisati predmet?'))return;
+  if(!confirm('Obrisati predmet? Predmet će biti označen kao obrisan i može se kasnije vratiti iz baze.'))return;
   try{await dbMutate({entity:'case',action:'delete',id:id});}catch(e){dbError(e);return;}
   D.p=D.p.filter(function(x){return x.id!==id;});
   D.ra=D.ra.filter(function(x){return x.pid!==id;});
@@ -8,21 +8,37 @@ async function delPredmet(id){
   closeM('detail');render();
 }
 async function delRadnja(id,pid){
+  if(!confirm('Obrisati ovu radnju? Biće označena kao obrisana, ne trajno uklonjena.'))return;
   try{await dbMutate({entity:'action',action:'delete',id:id});}catch(e){dbError(e);return;}
   D.ra=D.ra.filter(function(x){return x.id!==id;});
   scheduleAlarms();if(pid)openDetail(pid);else{render();if(calSel)renderCal();}
 }
 async function delRok(id,pid){
+  if(!confirm('Obrisati ovaj rok? Biće označen kao obrisan, ne trajno uklonjen.'))return;
   try{await dbMutate({entity:'deadline',action:'delete',id:id});}catch(e){dbError(e);return;}
   D.k=D.k.filter(function(x){return x.id!==id;});
   scheduleAlarms();if(pid)openDetail(pid);else render();
 }
 async function addUplata(id){
-  var iz=parseFloat(prompt('Iznos uplate (RSD):'));if(!iz||isNaN(iz))return;
+  var iz=parseFloat(prompt('Iznos uplate (RSD):'));if(!iz||isNaN(iz)||iz<=0)return;
   var p=D.p.find(function(x){return x.id===id;});if(!p)return;
-  var novi=(p.plac||0)+iz;
-  try{await dbMutate({entity:'case',action:'update',id:id,fields:{plac:novi}});}catch(e){dbError(e);return;}
-  p.plac=novi;openDetail(id);
+  var nap=prompt('Napomena uz uplatu (opciono):')||'';
+  try{
+    var result=await dbMutate({entity:'payment',action:'create',record:{pid:id,amount:iz,notes:nap}});
+    var pay=result&&result.payment;if(!pay)throw new Error('Server nije vratio podatke o uplati.');
+    if(!p.uplate)p.uplate=[];
+    p.uplate.push(pay);
+    p.plac=p.uplate.reduce(function(sum,x){return sum+Number(x.amount||0);},0);
+  }catch(e){dbError(e);return;}
+  openDetail(id);
+}
+async function delUplata(id,pid){
+  if(!confirm('Obrisati ovu uplatu iz evidencije? Zapis ostaje sačuvan kao obrisan.'))return;
+  var p=D.p.find(function(x){return x.id===pid;});if(!p)return;
+  try{await dbMutate({entity:'payment',action:'delete',id:id});}catch(e){dbError(e);return;}
+  p.uplate=(p.uplate||[]).filter(function(x){return x.id!==id;});
+  p.plac=p.uplate.reduce(function(sum,x){return sum+Number(x.amount||0);},0);
+  openDetail(pid);
 }
 function openStUpdate(raId,pid){
   var ra=D.ra.find(function(x){return x.id===raId;});if(!ra)return;
