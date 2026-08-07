@@ -68,6 +68,9 @@ function installUserUi(){
     fg.appendChild(label);fg.appendChild(select);
     vrsta.closest('.fg').insertAdjacentElement('afterend',fg);
   }
+
+  var storageNote=document.querySelector('#ra-file-wrap .tc-sub');
+  if(storageNote)storageNote.textContent='PDF, Word ili slika. Datoteke se čuvaju u privatnom zajedničkom skladištu kancelarije.';
 }
 
 async function initSession(){
