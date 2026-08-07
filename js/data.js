@@ -34,5 +34,6 @@ async function dbMutate(payload) {
 
 function dbError(err) {
   console.error(err);
-  alert('Promena nije sačuvana u zajedničkoj bazi. Proverite internet vezu i pokušajte ponovo.');
+  var detail = err && err.message ? '\n\nDetalj: ' + err.message : '';
+  alert('Promena nije sačuvana u zajedničkoj bazi.' + detail);
 }
