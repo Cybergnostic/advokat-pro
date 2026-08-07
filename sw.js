@@ -1,4 +1,4 @@
-const CACHE_NAME = 'advokat-pro-v8';
+const CACHE_NAME = 'advokat-pro-v9';
 const APP_FILES = [
   "./",
   "./index.html",
@@ -73,6 +73,33 @@ self.addEventListener('message', event => {
   if (!event.data || event.data.type !== 'SHOW_NOTIFICATION') return;
   self.registration.showNotification(event.data.title || 'Advokat Pro', {
     body: event.data.body || '',
-    tag: event.data.tag || 'advokat-pro'
+    tag: event.data.tag || 'advokat-pro',
+    icon: './assets/icons/icon-192.png',
+    badge: './assets/icons/icon-192.png'
   });
+});
+
+self.addEventListener('push', event => {
+  event.waitUntil(self.registration.showNotification('Advokat Pro', {
+    body: 'Novi predmet je dodat u zajedničku bazu.',
+    tag: 'advokat-pro-new-case',
+    icon: './assets/icons/icon-192.png',
+    badge: './assets/icons/icon-192.png',
+    data: { url: './' }
+  }));
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const target = new URL((event.notification.data && event.notification.data.url) || './', self.location.origin).href;
+  event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    for (const client of list) {
+      if (client.url.startsWith(self.location.origin)) {
+        client.focus();
+        if ('navigate' in client) return client.navigate(target);
+        return client;
+      }
+    }
+    return clients.openWindow(target);
+  }));
 });
