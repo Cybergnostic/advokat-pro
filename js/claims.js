@@ -7,7 +7,7 @@ function potSt(s){
   var cols=['agr','ao','ab','ap'];
   ids.forEach(function(id,i){document.getElementById(id).className='tg'+(vals[i]===s?' '+cols[i]:'');});
 }
-function savePot(){
+async function savePot(){
   var pid=document.getElementById('pot-pid').value;
   var br=document.getElementById('pot-br').value.trim()||(pid?D.p.find(function(x){return x.id===pid;})||{br:''}:{br:''}).br;
   var iznos=parseFloat(document.getElementById('pot-iznos').value)||0;
@@ -23,7 +23,8 @@ function savePot(){
     nap:document.getElementById('pot-nap').value.trim(),
     datUnos:new Date().toISOString().slice(0,10),
   };
-  D.pot.push(obj);save();closeM('pot');renderPot();
+  try{await dbMutate({entity:'claim',action:'create',record:obj});}catch(e){dbError(e);return;}
+  D.pot.push(obj);closeM('pot');renderPot();
   document.getElementById('sn-pot').textContent=D.pot.filter(function(x){return x.status!=='placeno';}).length;
 }
 function openPotAct(id){
@@ -51,22 +52,26 @@ function potPushIzv(id){potChange(id,'izvrsno');}
 function potPushZalba(id){potChange(id,'zalbeno');}
 function potPushPrav(id){potChange(id,'pravnosnazno');}
 function potPushDelim(id){potChange(id,'delimicno');}
-function potChange(id,st){
+async function potChange(id,st){
   var pot=D.pot.find(function(x){return x.id===id;}); if(!pot) return;
-  pot.status=st;save();closeM('potact');renderPot();
+  try{await dbMutate({entity:'claim',action:'update',id:id,fields:{status:st}});}catch(e){dbError(e);return;}
+  pot.status=st;closeM('potact');renderPot();
 }
-function potPaid(id){
+async function potPaid(id){
   var pot=D.pot.find(function(x){return x.id===id;}); if(!pot) return;
   if(!confirm('Označiti kao naplaćeno i premestiti u arhivu plaćanja?')) return;
-  pot.status='placeno';pot.datPlacanja=new Date().toISOString().slice(0,10);
+  var datPlacanja=new Date().toISOString().slice(0,10);
+  try{await dbMutate({entity:'claim',action:'update',id:id,fields:{status:'placeno',datPlacanja:datPlacanja}});}catch(e){dbError(e);return;}
+  pot.status='placeno';pot.datPlacanja=datPlacanja;
   D.arh.unshift(pot);
   D.pot=D.pot.filter(function(x){return x.id!==id;});
-  save();closeM('potact');renderPot();
+  closeM('potact');renderPot();
 }
-function potDel(id){
+async function potDel(id){
   if(!confirm('Obrisati potraživanje?')) return;
+  try{await dbMutate({entity:'claim',action:'delete',id:id});}catch(e){dbError(e);return;}
   D.pot=D.pot.filter(function(x){return x.id!==id;});
-  save();closeM('potact');renderPot();
+  closeM('potact');renderPot();
 }
 function potBdg(st){
   var cls={pravnosnazno:'ps-prav',zalbeno:'ps-zalb',izvrsno:'ps-izv',delimicno:'bp2',placeno:'ps-plac'};
