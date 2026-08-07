@@ -10,30 +10,43 @@ function urlBase64ToUint8Array(base64String){
   return out;
 }
 
+async function readySW(){
+  if(!('serviceWorker' in navigator)) return null;
+  if(swReg && swReg.active) return swReg;
+  swReg = await navigator.serviceWorker.ready;
+  return swReg;
+}
+
 async function subscribeToPush(){
   try{
-    if(!swReg || !('PushManager' in window) || permN()!=='granted') return;
-    var sub=await swReg.pushManager.getSubscription();
+    if(!('PushManager' in window) || permN()!=='granted') return false;
+    var reg=await readySW();
+    if(!reg) return false;
+    var sub=await reg.pushManager.getSubscription();
     if(!sub){
-      sub=await swReg.pushManager.subscribe({
+      sub=await reg.pushManager.subscribe({
         userVisibleOnly:true,
         applicationServerKey:urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
       });
     }
-    await fetch('/api/push/subscribe',{
+    var res=await fetch('/api/push/subscribe',{
       method:'POST',
       credentials:'same-origin',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({endpoint:sub.endpoint})
     });
-  }catch(e){ console.warn('Push subscription failed',e); }
+    if(!res.ok) throw new Error('Push registration HTTP '+res.status);
+    return true;
+  }catch(e){ console.warn('Push subscription failed',e); return false; }
 }
 
 function initSW(){
   if(!('serviceWorker' in navigator)) return;
-  navigator.serviceWorker.register('sw.js').then(function(r){
+  navigator.serviceWorker.register('sw.js').then(async function(r){
     swReg=r;
-    if(permN()==='granted') subscribeToPush();
+    await navigator.serviceWorker.ready;
+    swReg=await navigator.serviceWorker.ready;
+    if(permN()==='granted') await subscribeToPush();
   }).catch(function(e){ console.warn('Service worker registration failed',e); });
 }
 function hasN(){ try{ return typeof Notification !== 'undefined'; }catch(e){ return false; } }
