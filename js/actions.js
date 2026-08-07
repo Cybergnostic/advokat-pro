@@ -8,7 +8,10 @@ function setTip(tip){
   if(tip==='rociste')setSt('buduci');raLista();
 }
 function setSt(s){_st=s;var m={odrzano:'agr',odlozeno:'ar',buduci:'ab'};['od','ol','bu'].forEach(function(x,i){var k=['odrzano','odlozeno','buduci'][i];document.getElementById('st-'+x).className='tg'+(k===s?' '+m[k]:'');});}
-function raLista(){var pid=document.getElementById('ra-pred').value;var p=D.p.find(function(x){return x.id===pid;});var lista=getRL(p?p.vrsta:'parnicni',_tip,p?p.uloga:'default');document.getElementById('ra-naziv').innerHTML=lista.map(function(r){return '<option value="'+r.n+'">'+r.n+'</option>';}).join('');}
+function raLista(){
+  var pid=document.getElementById('ra-pred').value;var p=D.p.find(function(x){return x.id===pid;});var lista=getRL(p?p.vrsta:'parnicni',_tip,p?p.uloga:'default');var sel=document.getElementById('ra-naziv');sel.replaceChildren();
+  lista.forEach(function(r){var opt=document.createElement('option');opt.value=r.n;opt.textContent=r.n;sel.appendChild(opt);});
+}
 async function saveRadnja(){
   var pid=document.getElementById('ra-pred').value,dat=document.getElementById('ra-dat').value,naziv=document.getElementById('ra-naziv').value;
   if(!pid){alert('Izaberite predmet.');return;}if(!dat){alert('Unesite datum.');return;}if(!naziv){alert('Izaberite naziv radnje.');return;}
