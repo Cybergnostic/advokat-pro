@@ -1,0 +1,11 @@
+name = "advokat-pro-reminders"
+main = "worker/reminders.js"
+compatibility_date = "2026-08-07"
+
+[triggers]
+crons = ["* * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "advokat-pro-db"
+database_id = "65716c17-4a79-4d74-84be-e1389b317a0e"
