@@ -8,6 +8,85 @@ function requireFields(obj, fields) {
   }
 }
 
+const VAPID_PUBLIC_KEY = 'BC8zQ_raNZBn5HL1-pd9l_ClLL0t7VNlAVrxgJBr2v7XDLNmJTcxRjIddbacBXi0sZqY7TraT-RMMmMuGVaDgb8';
+const VAPID_SUBJECT = 'https://advokat-pro.pages.dev/';
+
+function b64urlBytes(bytes) {
+  let s = '';
+  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function b64urlText(value) {
+  return b64urlBytes(new TextEncoder().encode(value));
+}
+
+function decodeB64url(value) {
+  const padded = value.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - value.length % 4) % 4);
+  const raw = atob(padded);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+async function vapidAuthorization(endpoint, privateD) {
+  if (!privateD) throw new Error('VAPID_PRIVATE_KEY is not configured.');
+
+  const pub = decodeB64url(VAPID_PUBLIC_KEY);
+  if (pub.length !== 65 || pub[0] !== 4) throw new Error('Invalid VAPID public key.');
+  const x = b64urlBytes(pub.slice(1, 33));
+  const y = b64urlBytes(pub.slice(33, 65));
+
+  const key = await crypto.subtle.importKey('jwk', {
+    kty: 'EC', crv: 'P-256', x, y, d: privateD,
+    ext: true, key_ops: ['sign']
+  }, { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign']);
+
+  const header = b64urlText(JSON.stringify({ typ: 'JWT', alg: 'ES256' }));
+  const payload = b64urlText(JSON.stringify({
+    aud: new URL(endpoint).origin,
+    exp: Math.floor(Date.now() / 1000) + 12 * 60 * 60,
+    sub: VAPID_SUBJECT
+  }));
+  const input = `${header}.${payload}`;
+  const signature = new Uint8Array(await crypto.subtle.sign(
+    { name: 'ECDSA', hash: 'SHA-256' }, key, new TextEncoder().encode(input)
+  ));
+  const jwt = `${input}.${b64urlBytes(signature)}`;
+  return `vapid t=${jwt}, k=${VAPID_PUBLIC_KEY}`;
+}
+
+async function sendCasePushes(context) {
+  const privateD = context.env.VAPID_PRIVATE_KEY;
+  if (!privateD) {
+    console.warn('Web Push skipped: VAPID_PRIVATE_KEY is not configured.');
+    return;
+  }
+
+  const rows = await context.env.DB.prepare('SELECT endpoint FROM push_subscriptions').all();
+  const subscriptions = rows.results || [];
+  await Promise.allSettled(subscriptions.map(async row => {
+    try {
+      const authorization = await vapidAuthorization(row.endpoint, privateD);
+      const res = await fetch(row.endpoint, {
+        method: 'POST',
+        headers: {
+          TTL: '60',
+          Urgency: 'high',
+          Authorization: authorization
+        }
+      });
+      if (res.status === 404 || res.status === 410) {
+        await context.env.DB.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?').bind(row.endpoint).run();
+      } else if (!res.ok) {
+        console.warn('Push service returned', res.status, row.endpoint);
+      }
+    } catch (error) {
+      console.warn('Push send failed', error);
+    }
+  }));
+}
+
 async function driveDelete(context, driveFileId) {
   if (!driveFileId) return;
   const url = context.env.GDRIVE_URL;
@@ -54,6 +133,7 @@ export async function onRequestPost(context) {
         record.sld ? 1 : 0, record.kazna ?? null, record.kdNaziv || '', record.neprocenjiv ? 1 : 0,
         record.nproIdx ?? null, Number(record.vred || 0)
       ).run();
+      try { await sendCasePushes(context); } catch (pushError) { console.warn('Case push notification failed', pushError); }
       return json({ ok: true });
     }
 
