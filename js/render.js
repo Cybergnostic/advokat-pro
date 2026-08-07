@@ -23,7 +23,7 @@ function render(){
     var pct=ukupno?Math.min(100,Math.round(((p.plac||0)/ukupno)*100)):0;
     var isK=p.vrsta==='krivicni'||p.vrsta==='tuzilastvo';
     return '<div class="card '+(urgent?'cr':'cg')+'" onclick="openDetail(\''+p.id+'\')">'
-      +'<div class="ch"><div class="cn">'+p.br+'</div><span class="bdg bg">'+(VL[p.vrsta]||p.vrsta)+'</span></div>'
+      +'<div class="ch"><div class="cn">'+p.br+'</div><div style="display:flex;align-items:center;gap:7px"><span class="bdg bg">'+(VL[p.vrsta]||p.vrsta)+'</span><button class="btn btn-rd" style="font-size:11px;padding:4px 8px" title="Obriši predmet" onclick="event.stopPropagation();delPredmet(\''+p.id+'\')">🗑 Obriši</button></div></div>'
       +'<div class="cm">'+(p.lbl1||'Klijent')+': <b>'+p.tuz+'</b>'
       +(p.tuz2&&p.vrsta!=='tuzilastvo'?'<br>'+(p.lbl2||'Protivnik')+': '+p.tuz2:'')
       +(p.sud?'<br>🏛 '+p.sud:'')
