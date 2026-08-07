@@ -89,10 +89,11 @@ async function encryptPayload(p256dh, auth, payload) {
 }
 
 export async function sendWebPush(subscription, privateD, payload) {
+  if (!subscription.p256dh || !subscription.auth) throw new Error('Push subscription is missing encryption keys.');
   const authorization = await vapidAuthorization(subscription.endpoint, privateD);
   const headers = { TTL: '120', Urgency: 'high', Authorization: authorization };
   const options = { method: 'POST', headers };
-  if (payload && subscription.p256dh && subscription.auth) {
+  if (payload) {
     options.body = await encryptPayload(subscription.p256dh, subscription.auth, payload);
     headers['Content-Encoding'] = 'aes128gcm';
     headers['Content-Type'] = 'application/octet-stream';
@@ -100,17 +101,43 @@ export async function sendWebPush(subscription, privateD, payload) {
   return fetch(subscription.endpoint, options);
 }
 
-export async function sendPushToAll(env, payload) {
-  const rows = await env.DB.prepare('SELECT endpoint, p256dh, auth FROM push_subscriptions').all();
-  const subscriptions = rows.results || [];
-  const results = await Promise.allSettled(subscriptions.map(async sub => {
-    const res = await sendWebPush(sub, env.VAPID_PRIVATE_KEY, payload);
-    if (res.status === 404 || res.status === 410) {
-      await env.DB.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?').bind(sub.endpoint).run();
-    } else if (!res.ok) {
-      console.warn('Push service returned', res.status, sub.endpoint);
+async function sendToSubscriptions(env, subscriptions, payload) {
+  const usable = subscriptions.filter((x) => x.endpoint && x.p256dh && x.auth);
+  let delivered = 0;
+  let failed = 0;
+
+  await Promise.allSettled(usable.map(async (sub) => {
+    try {
+      const res = await sendWebPush(sub, env.VAPID_PRIVATE_KEY, payload);
+      if (res.status === 404 || res.status === 410) {
+        await env.DB.prepare('DELETE FROM push_subscriptions WHERE endpoint = ?').bind(sub.endpoint).run();
+        failed++;
+      } else if (!res.ok) {
+        failed++;
+        console.warn('Push service returned', res.status, sub.endpoint);
+      } else {
+        delivered++;
+      }
+    } catch (error) {
+      failed++;
+      console.warn('Push delivery failed', sub.endpoint, error);
     }
-    return res.status;
   }));
-  return results;
+
+  return { attempted: usable.length, delivered, failed };
+}
+
+export async function sendPushToUser(env, userId, payload) {
+  if (!userId) return { attempted: 0, delivered: 0, failed: 0 };
+  const rows = await env.DB.prepare(`SELECT p.endpoint, p.p256dh, p.auth
+    FROM push_subscriptions p JOIN users u ON u.id = p.user_id
+    WHERE p.user_id = ? AND u.active = 1`).bind(userId).all();
+  return sendToSubscriptions(env, rows.results || [], payload);
+}
+
+export async function sendPushToAll(env, payload) {
+  const rows = await env.DB.prepare(`SELECT p.endpoint, p.p256dh, p.auth
+    FROM push_subscriptions p LEFT JOIN users u ON u.id = p.user_id
+    WHERE p.user_id IS NULL OR u.active = 1`).all();
+  return sendToSubscriptions(env, rows.results || [], payload);
 }

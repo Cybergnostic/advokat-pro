@@ -20,31 +20,39 @@
   }
 })();
 
-// Remember which case detail is currently being viewed so contextual actions
-// such as "+ Rok" can reuse that case instead of asking for it again.
-var activeDetailCaseId=null;
-if(typeof openDetail==='function'){
-  var openDetailBase=openDetail;
-  openDetail=function(id){
-    activeDetailCaseId=id;
-    return openDetailBase(id);
-  };
+function showStartupError(e){
+  console.error('Application startup failed',e);
+  var overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;z-index:9998;background:var(--bg,#07070d);display:flex;align-items:center;justify-content:center;padding:24px';
+  var card=document.createElement('div');card.style.cssText='max-width:460px;text-align:center';
+  var h=document.createElement('div');h.textContent='Zajednička baza nije učitana';h.style.cssText='font-size:22px;font-weight:700;margin-bottom:10px';
+  var p=document.createElement('div');p.textContent='Aplikacija neće prikazati praznu listu kao da nema predmeta. Proverite vezu i pokušajte ponovo.';p.style.cssText='font-size:13px;line-height:1.5;color:var(--t2);margin-bottom:16px';
+  var detail=document.createElement('div');detail.textContent=e&&e.message?e.message:'';detail.style.cssText='font-size:11px;color:var(--t3);margin-bottom:16px';
+  var b=document.createElement('button');b.className='btn btn-gd';b.textContent='Pokušaj ponovo';b.onclick=function(){location.reload();};
+  card.appendChild(h);card.appendChild(p);card.appendChild(detail);card.appendChild(b);overlay.appendChild(card);document.body.appendChild(overlay);
 }
 
 // INIT
 async function initApp(){
-  initSW();
-  checkBanner();
   try{
+    await initSession();
+    initSW();
+    checkBanner();
     await loadAppConfig();
     pVrsta();
     await loadSharedState();
   }catch(e){
-    console.error('Application startup failed',e);
-    alert('Aplikacija trenutno ne može da učita konfiguraciju ili zajedničku bazu.');
+    showStartupError(e);
+    return;
   }
   checkAlarms();
   scheduleAlarms();
-  render();
+  renderAfterRefresh();
+
+  // Multi-user freshness: cheap revision checks while the app is open, plus an
+  // immediate check whenever the tab/window becomes active again.
+  setInterval(function(){refreshSharedState(false);},30000);
+  window.addEventListener('focus',function(){refreshSharedState(false);});
+  document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')refreshSharedState(false);});
 }
 initApp();

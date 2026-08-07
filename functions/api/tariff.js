@@ -1,4 +1,5 @@
 import { loadDomain, tariffCalculator, tariffPreview } from '../_lib/domain.js';
+import { errorResponse, resolveUser } from '../_lib/auth.js';
 
 function json(data, status = 200) {
   return Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
@@ -9,6 +10,7 @@ export async function onRequestPost(context) {
   if (!db) return json({ error: 'D1 binding DB is not configured.' }, 500);
 
   try {
+    await resolveUser(context, true);
     const body = await context.request.json();
     const domain = await loadDomain(db);
 
@@ -22,6 +24,6 @@ export async function onRequestPost(context) {
     return json({ error: 'Unsupported tariff operation.' }, 400);
   } catch (error) {
     console.error('POST /api/tariff failed', error);
-    return json({ error: error.message || 'Tariff calculation failed.' }, 500);
+    return errorResponse(error, 'Tariff calculation failed.');
   }
 }

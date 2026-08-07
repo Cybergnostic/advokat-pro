@@ -9,8 +9,8 @@ function acSearch(q,resId,hidId,selId,onSelect){
   if(!m.length){res.classList.remove('open');return;}
   res.innerHTML=m.map(function(p){
     return '<div class="ac-item" onclick="acSel(\''+p.id+'\',\''+hidId+'\',\''+selId+'\')">'
-      +'<div class="ac-br">'+p.br+' <span style="font-size:10px;color:var(--t3)">'+VL[p.vrsta]+'</span></div>'
-      +'<div class="ac-sub">'+p.tuz+(p.tuz2?' v. '+p.tuz2:'')+(p.sud?' · '+p.sud:'')+'</div>'
+      +'<div class="ac-br">'+esc(p.br)+' <span style="font-size:10px;color:var(--t3)">'+esc(VL[p.vrsta]||p.vrsta)+'</span></div>'
+      +'<div class="ac-sub">'+esc(p.tuz)+(p.tuz2?' v. '+esc(p.tuz2):'')+(p.sud?' · '+esc(p.sud):'')+'</div>'
       +'</div>';
   }).join('');
   res.classList.add('open');
@@ -21,10 +21,9 @@ function acSel(pid,hidId,selId){
   var inp=document.getElementById(hidId.replace('-pred','-search').replace('-pid','-search'));
   if(inp) inp.value=p.br;
   var sel=document.getElementById(selId);
-  sel.innerHTML='<b>'+p.br+'</b> — '+p.tuz+(p.tuz2?' v. '+p.tuz2:'')+(p.sud?'<br>🏛 '+p.sud:'');
+  sel.innerHTML='<b>'+esc(p.br)+'</b> — '+esc(p.tuz)+(p.tuz2?' v. '+esc(p.tuz2):'')+(p.sud?'<br>🏛 '+esc(p.sud):'');
   sel.className='ac-sel show';
   document.getElementById(hidId.replace('-pred','-ac-res').replace('-pid','-ac-res')).classList.remove('open');
-  // Trigger lista update
   if(hidId==='ra-pred') raLista();
 }
 function raAC(){ acSearch(document.getElementById('ra-search').value,'ra-ac-res','ra-pred','ra-ac-sel',null); }
@@ -37,8 +36,8 @@ function potAC(){
   if(!m.length){res.classList.remove('open');return;}
   res.innerHTML=m.map(function(p){
     return '<div class="ac-item" onclick="potAcSel(\''+p.id+'\')">'
-      +'<div class="ac-br">'+p.br+' <span style="font-size:10px;color:var(--t3)">'+VL[p.vrsta]+'</span></div>'
-      +'<div class="ac-sub">'+p.tuz+(p.tuz2?' v. '+p.tuz2:'')+'</div>'
+      +'<div class="ac-br">'+esc(p.br)+' <span style="font-size:10px;color:var(--t3)">'+esc(VL[p.vrsta]||p.vrsta)+'</span></div>'
+      +'<div class="ac-sub">'+esc(p.tuz)+(p.tuz2?' v. '+esc(p.tuz2):'')+'</div>'
       +'</div>';
   }).join('');
   res.classList.add('open');
@@ -48,7 +47,7 @@ function potAcSel(pid){
   document.getElementById('pot-pid').value=pid;
   document.getElementById('pot-search').value=p.br;
   document.getElementById('pot-ac-res').classList.remove('open');
-  document.getElementById('pot-ac-sel').innerHTML='<b>'+p.br+'</b> — '+p.tuz+(p.tuz2?' v. '+p.tuz2:'');
+  document.getElementById('pot-ac-sel').innerHTML='<b>'+esc(p.br)+'</b> — '+esc(p.tuz)+(p.tuz2?' v. '+esc(p.tuz2):'');
   document.getElementById('pot-ac-sel').className='ac-sel show';
   document.getElementById('pot-br').value=p.br;
   document.getElementById('pot-klijent').value=p.tuz;

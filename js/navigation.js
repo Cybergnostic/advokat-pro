@@ -15,7 +15,6 @@ function openM(type,pid,dat){
   var el=document.getElementById('mo-'+type);
   if(!el) return;
   if(type==='radnja'){
-    // Clear
     document.getElementById('ra-search').value='';
     document.getElementById('ra-pred').value='';
     document.getElementById('ra-ac-sel').className='ac-sel';
@@ -26,13 +25,12 @@ function openM(type,pid,dat){
     document.getElementById('ra-nap').value='';
     document.getElementById('ra-files').value='';
     setTip('rociste');
-    // If pid passed, pre-select
     if(pid){
       var p=D.p.find(function(x){return x.id===pid;});
       if(p){
         document.getElementById('ra-search').value=p.br;
         document.getElementById('ra-pred').value=p.id;
-        document.getElementById('ra-ac-sel').innerHTML='<b>'+p.br+'</b> — '+p.tuz;
+        document.getElementById('ra-ac-sel').innerHTML='<b>'+esc(p.br)+'</b> — '+esc(p.tuz);
         document.getElementById('ra-ac-sel').className='ac-sel show';
         raLista();
       }
@@ -47,20 +45,12 @@ function openM(type,pid,dat){
     document.getElementById('rk-kraj').value='';
     delete document.getElementById('rk-kraj').dataset.iso;
     document.getElementById('rk-nap').value='';
-
-    // The detail modal's "+ Rok" already has a case context. Reuse it.
-    // A generic "+ Rok" click from the Rokovi page still starts with no case selected.
-    var fromDetail=false;
-    try{
-      fromDetail=!!(window.event&&window.event.target&&window.event.target.closest&&window.event.target.closest('#mo-detail'));
-    }catch(_){}
-    if(!pid&&fromDetail&&typeof activeDetailCaseId!=='undefined') pid=activeDetailCaseId;
     if(pid){
       var rp=D.p.find(function(x){return x.id===pid;});
       if(rp){
         document.getElementById('rk-search').value=rp.br;
         document.getElementById('rk-pred').value=rp.id;
-        document.getElementById('rk-ac-sel').innerHTML='<b>'+rp.br+'</b> — '+rp.tuz;
+        document.getElementById('rk-ac-sel').innerHTML='<b>'+esc(rp.br)+'</b> — '+esc(rp.tuz);
         document.getElementById('rk-ac-sel').className='ac-sel show';
       }
     }
@@ -81,4 +71,5 @@ function openM(type,pid,dat){
 function closeM(type){
   var el=document.getElementById('mo-'+type);
   if(el) el.classList.remove('open');
+  setTimeout(function(){if(typeof flushPendingRefresh==='function')flushPendingRefresh();},0);
 }
