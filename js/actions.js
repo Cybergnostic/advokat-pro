@@ -16,7 +16,7 @@ async function saveRadnja(){
   var pid=document.getElementById('ra-pred').value,dat=document.getElementById('ra-dat').value,naziv=document.getElementById('ra-naziv').value;
   if(!pid){alert('Izaberite predmet.');return;}if(!dat){alert('Unesite datum.');return;}if(!naziv){alert('Izaberite naziv radnje.');return;}
   var fileInput=document.getElementById('ra-files');
-  var obj={id:Date.now().toString(),pid:pid,dat:dat,vr:document.getElementById('ra-vr').value,sala:document.getElementById('ra-sala').value.trim(),nap:document.getElementById('ra-nap').value.trim(),tip:_tip,naziv:naziv,status:_tip==='rociste'?_st:'done',files:[],iznos:0};
+  var obj={id:newId(),pid:pid,dat:dat,vr:document.getElementById('ra-vr').value,sala:document.getElementById('ra-sala').value.trim(),nap:document.getElementById('ra-nap').value.trim(),tip:_tip,naziv:naziv,status:_tip==='rociste'?_st:'done',files:[],iznos:0};
   try{
     var result=await dbMutate({entity:'action',action:'create',record:obj});
     obj.iznos=Number(result&&result.fee_amount||0);
