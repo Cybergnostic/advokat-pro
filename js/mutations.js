@@ -19,6 +19,16 @@ async function delRok(id,pid){
   D.k=D.k.filter(function(x){return x.id!==id;});
   scheduleAlarms();if(pid)openDetail(pid);else render();
 }
+function chooseCaseAssignee(id){
+  if(!USERS.length)return;
+  var p=D.p.find(function(x){return x.id===id;});if(!p)return;
+  var list=USERS.map(function(u,i){return (i+1)+'. '+u.displayName+(u.role==='dev'?' (dev)':'');}).join('\n');
+  var choice=prompt('Zaduženi korisnik za '+p.br+':\n\n'+list+'\n\nUnesite broj:');
+  if(choice===null)return;
+  var idx=parseInt(choice,10)-1;
+  if(idx<0||idx>=USERS.length||!Number.isInteger(idx)){alert('Neispravan izbor.');return;}
+  assignCase(id,USERS[idx].id);
+}
 async function assignCase(id,userId){
   var p=D.p.find(function(x){return x.id===id;});if(!p)return;
   var oldId=p.assignedUserId||'';
@@ -28,7 +38,8 @@ async function assignCase(id,userId){
     dbError(e);return;
   }
   p.assignedUserId=userId;p.assignedUserName=u.displayName;
-  openDetail(id);render();
+  if(document.getElementById('mo-detail').classList.contains('open'))openDetail(id);
+  render();
 }
 async function addUplata(id){
   var iz=parseFloat(prompt('Iznos uplate (RSD):'));if(!iz||isNaN(iz)||iz<=0)return;
