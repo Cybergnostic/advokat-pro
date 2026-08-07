@@ -8,17 +8,16 @@ function setTip(tip){
   if(tip==='rociste')setSt('buduci');raLista();
 }
 function setSt(s){_st=s;var m={odrzano:'agr',odlozeno:'ar',buduci:'ab'};['od','ol','bu'].forEach(function(x,i){var k=['odrzano','odlozeno','buduci'][i];document.getElementById('st-'+x).className='tg'+(k===s?' '+m[k]:'');});}
-function raLista(){var pid=document.getElementById('ra-pred').value;var p=D.p.find(function(x){return x.id===pid;});var lista=getRL(p?p.vrsta:'parnicni',_tip,p?p.uloga:'okrivljeni');document.getElementById('ra-naziv').innerHTML=lista.map(function(r){return '<option value="'+r.n+'">'+r.n+'</option>';}).join('');}
+function raLista(){var pid=document.getElementById('ra-pred').value;var p=D.p.find(function(x){return x.id===pid;});var lista=getRL(p?p.vrsta:'parnicni',_tip,p?p.uloga:'default');document.getElementById('ra-naziv').innerHTML=lista.map(function(r){return '<option value="'+r.n+'">'+r.n+'</option>';}).join('');}
 async function saveRadnja(){
   var pid=document.getElementById('ra-pred').value,dat=document.getElementById('ra-dat').value,naziv=document.getElementById('ra-naziv').value;
   if(!pid){alert('Izaberite predmet.');return;}if(!dat){alert('Unesite datum.');return;}if(!naziv){alert('Izaberite naziv radnje.');return;}
   var fileInput=document.getElementById('ra-files');
-  var obj={id:Date.now().toString(),pid:pid,dat:dat,vr:document.getElementById('ra-vr').value,sala:document.getElementById('ra-sala').value.trim(),nap:document.getElementById('ra-nap').value.trim(),tip:_tip,naziv:naziv,status:_tip==='rociste'?_st:'done',files:[]};
+  var obj={id:Date.now().toString(),pid:pid,dat:dat,vr:document.getElementById('ra-vr').value,sala:document.getElementById('ra-sala').value.trim(),nap:document.getElementById('ra-nap').value.trim(),tip:_tip,naziv:naziv,status:_tip==='rociste'?_st:'done',files:[],iznos:0};
   try{
-    await dbMutate({entity:'action',action:'create',record:obj});
-    if(_tip==='podnesak' && fileInput && fileInput.files && fileInput.files.length){
-      obj.files=await storeFiles(fileInput.files,obj.id);
-    }
+    var result=await dbMutate({entity:'action',action:'create',record:obj});
+    obj.iznos=Number(result&&result.fee_amount||0);
+    if(_tip==='podnesak'&&fileInput&&fileInput.files&&fileInput.files.length){obj.files=await storeFiles(fileInput.files,obj.id);}
   }catch(e){
     try{await dbMutate({entity:'action',action:'delete',id:obj.id});}catch(_){}
     dbError(e);return;
