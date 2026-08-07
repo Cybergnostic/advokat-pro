@@ -134,11 +134,21 @@ export async function onRequestGet(context) {
 
     const [cases, actions, deadlines, claims, attachments, payments, users, activity, revisionRow, domain] = await Promise.all([
       db.prepare('SELECT * FROM cases WHERE deleted_at IS NULL ORDER BY created_at ASC').all(),
-      db.prepare('SELECT * FROM actions WHERE deleted_at IS NULL ORDER BY action_date ASC, action_time ASC, created_at ASC').all(),
-      db.prepare('SELECT * FROM deadlines WHERE deleted_at IS NULL ORDER BY due_date ASC, created_at ASC').all(),
+      db.prepare(`SELECT a.* FROM actions a JOIN cases c ON c.id = a.case_id
+        WHERE a.deleted_at IS NULL AND c.deleted_at IS NULL
+        ORDER BY a.action_date ASC, a.action_time ASC, a.created_at ASC`).all(),
+      db.prepare(`SELECT d.* FROM deadlines d JOIN cases c ON c.id = d.case_id
+        WHERE d.deleted_at IS NULL AND c.deleted_at IS NULL
+        ORDER BY d.due_date ASC, d.created_at ASC`).all(),
       db.prepare('SELECT * FROM claims WHERE deleted_at IS NULL ORDER BY created_at ASC').all(),
-      db.prepare('SELECT * FROM attachments WHERE deleted_at IS NULL ORDER BY created_at ASC').all(),
-      db.prepare('SELECT * FROM payments WHERE deleted_at IS NULL ORDER BY payment_date ASC, created_at ASC').all(),
+      db.prepare(`SELECT f.* FROM attachments f
+        JOIN actions a ON a.id = f.action_id
+        JOIN cases c ON c.id = a.case_id
+        WHERE f.deleted_at IS NULL AND a.deleted_at IS NULL AND c.deleted_at IS NULL
+        ORDER BY f.created_at ASC`).all(),
+      db.prepare(`SELECT p.* FROM payments p JOIN cases c ON c.id = p.case_id
+        WHERE p.deleted_at IS NULL AND c.deleted_at IS NULL
+        ORDER BY p.payment_date ASC, p.created_at ASC`).all(),
       db.prepare('SELECT id, display_name, role FROM users WHERE active = 1').all(),
       db.prepare(`SELECT a.id, a.user_id, a.action, a.entity, a.entity_id, a.details, a.created_at, u.display_name
         FROM audit_log a LEFT JOIN users u ON u.id = a.user_id
