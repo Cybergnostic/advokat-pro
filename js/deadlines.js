@@ -20,7 +20,7 @@ async function saveRok(){
   var krajIso=document.getElementById('rk-kraj').dataset.iso;
   if(!pid){alert('Izaberite predmet.');return;}
   if(!dat||!krajIso){alert('Unesite datum odluke.');return;}
-  var obj={id:Date.now().toString(),pid:pid,dat:dat,tr:parseInt(document.getElementById('rk-tr').value),krajIso:krajIso,nap:document.getElementById('rk-nap').value.trim()};
+  var obj={id:newId(),pid:pid,dat:dat,tr:parseInt(document.getElementById('rk-tr').value),krajIso:krajIso,nap:document.getElementById('rk-nap').value.trim()};
   try{
     var result=await dbMutate({entity:'deadline',action:'create',record:obj});
     // Server independently calculates the due date and remains authoritative.
