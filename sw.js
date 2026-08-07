@@ -1,4 +1,4 @@
-const CACHE_NAME = 'advokat-pro-v11';
+const CACHE_NAME = 'advokat-pro-v12';
 const APP_FILES = [
   "./",
   "./index.html",
@@ -80,12 +80,22 @@ self.addEventListener('message', event => {
 });
 
 self.addEventListener('push', event => {
-  event.waitUntil(self.registration.showNotification('Advokat Pro', {
+  let payload = {
+    title: 'Advokat Pro',
     body: 'Novi predmet je dodat u zajedničku bazu.',
     tag: 'advokat-pro-new-case',
+    url: './'
+  };
+  try {
+    if (event.data) payload = Object.assign(payload, event.data.json());
+  } catch (_) {}
+
+  event.waitUntil(self.registration.showNotification(payload.title || 'Advokat Pro', {
+    body: payload.body || '',
+    tag: payload.tag || 'advokat-pro',
     icon: './assets/icons/icon-192.png',
     badge: './assets/icons/icon-192.png',
-    data: { url: './' }
+    data: { url: payload.url || './' }
   }));
 });
 
