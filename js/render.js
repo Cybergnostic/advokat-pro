@@ -6,6 +6,7 @@ function activityText(a){
   var label=d.caseNumber||d.name||d.fileName||'';
   if(a.entity==='payment'&&d.amount)label=(label?label+' · ':'')+Number(d.amount).toLocaleString('sr-RS')+' din';
   if(a.action==='update'&&d.field==='status')label=(label?label+' · ':'')+String(d.from||'')+' → '+String(d.to||'');
+  if(a.action==='update'&&d.field==='assignedUser')label=(label?label+' · ':'')+'zadužen: '+String(d.assignedUser||'');
   if(a.action==='claim')return 'povezao korisnički profil';
   return (verbs[a.action]||a.action)+' '+(entity[a.entity]||a.entity)+(label?' · '+label:'');
 }
@@ -48,6 +49,7 @@ function render(){
     return '<div class="card '+(urgent?'cr':'cg')+'" onclick="openDetail(\''+p.id+'\')">'
       +'<div class="ch"><div class="cn">'+esc(p.br)+'</div><div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">'
       +(p.assignedUserName?'<span class="bdg bb2">👤 '+esc(p.assignedUserName)+'</span>':'<span class="bdg bo">Nedodeljen</span>')
+      +'<button class="btn btn-out" style="font-size:10px;padding:4px 7px" title="Promeni zaduženog korisnika" onclick="event.stopPropagation();chooseCaseAssignee(\''+p.id+'\')">👤 Zaduži</button>'
       +'<span class="bdg bg">'+esc(VL[p.vrsta]||p.vrsta)+'</span><button class="btn btn-rd" style="font-size:11px;padding:4px 8px" title="Obriši predmet" onclick="event.stopPropagation();delPredmet(\''+p.id+'\')">🗑 Obriši</button></div></div>'
       +'<div class="cm">'+esc(p.lbl1||'Klijent')+': <b>'+esc(p.tuz)+'</b>'
       +(p.tuz2&&!cfg.isProsecution?'<br>'+esc(p.lbl2||'Protivnik')+': '+esc(p.tuz2):'')
