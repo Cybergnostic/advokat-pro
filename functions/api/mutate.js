@@ -1,0 +1,129 @@
+function json(data, status = 200) {
+  return Response.json(data, { status, headers: { 'Cache-Control': 'no-store' } });
+}
+
+function requireFields(obj, fields) {
+  for (const field of fields) {
+    if (obj[field] === undefined || obj[field] === null) throw new Error(`Missing field: ${field}`);
+  }
+}
+
+export async function onRequestPost(context) {
+  const db = context.env.DB;
+  if (!db) return json({ error: 'D1 binding DB is not configured.' }, 500);
+
+  try {
+    const body = await context.request.json();
+    const { entity, action, record, id, fields } = body || {};
+
+    if (entity === 'case' && action === 'create') {
+      requireFields(record, ['id', 'br', 'tuz', 'vrsta']);
+      await db.prepare(`INSERT INTO cases (
+        id, case_number, client, other_party, client_role, label1, label2, court, court_type, phone,
+        case_type, paid_amount, notes, prosecution_type, prosecution_number, public_prosecutor, phase,
+        criminal_role, court_appointed, sentence_band, offense_name, non_assessable,
+        non_assessable_index, dispute_value
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(
+        record.id, record.br, record.tuz, record.tuz2 || '', record.klijentUloga || '', record.lbl1 || '', record.lbl2 || '',
+        record.sud || '', record.tipSuda || '', record.tel || '', record.vrsta, Number(record.plac || 0), record.bel || '',
+        record.tipTuzilastva || '', record.ktn || '', record.jtuz || '', record.faza || '', record.uloga || '',
+        record.sld ? 1 : 0, record.kazna ?? null, record.kdNaziv || '', record.neprocenjiv ? 1 : 0,
+        record.nproIdx ?? null, Number(record.vred || 0)
+      ).run();
+      return json({ ok: true });
+    }
+
+    if (entity === 'case' && action === 'delete') {
+      requireFields({ id }, ['id']);
+      await db.prepare('DELETE FROM cases WHERE id = ?').bind(id).run();
+      return json({ ok: true });
+    }
+
+    if (entity === 'case' && action === 'update') {
+      requireFields({ id }, ['id']);
+      if (fields && fields.plac !== undefined) {
+        await db.prepare('UPDATE cases SET paid_amount = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+          .bind(Number(fields.plac || 0), id).run();
+        return json({ ok: true });
+      }
+    }
+
+    if (entity === 'action' && action === 'create') {
+      requireFields(record, ['id', 'pid', 'dat', 'tip', 'naziv']);
+      await db.prepare(`INSERT INTO actions
+        (id, case_id, action_date, action_time, courtroom, notes, action_type, name, status)
+        VALUES (?,?,?,?,?,?,?,?,?)`).bind(
+        record.id, record.pid, record.dat, record.vr || '', record.sala || '', record.nap || '',
+        record.tip, record.naziv, record.status || 'done'
+      ).run();
+      return json({ ok: true });
+    }
+
+    if (entity === 'action' && action === 'delete') {
+      requireFields({ id }, ['id']);
+      await db.prepare('DELETE FROM actions WHERE id = ?').bind(id).run();
+      return json({ ok: true });
+    }
+
+    if (entity === 'action' && action === 'update') {
+      requireFields({ id }, ['id']);
+      if (fields && fields.status !== undefined) {
+        await db.prepare('UPDATE actions SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+          .bind(fields.status, id).run();
+        return json({ ok: true });
+      }
+    }
+
+    if (entity === 'deadline' && action === 'create') {
+      requireFields(record, ['id', 'pid', 'dat', 'tr', 'krajIso']);
+      await db.prepare(`INSERT INTO deadlines
+        (id, case_id, decision_date, duration_days, due_date, notes)
+        VALUES (?,?,?,?,?,?)`).bind(
+        record.id, record.pid, record.dat, Number(record.tr), record.krajIso, record.nap || ''
+      ).run();
+      return json({ ok: true });
+    }
+
+    if (entity === 'deadline' && action === 'delete') {
+      requireFields({ id }, ['id']);
+      await db.prepare('DELETE FROM deadlines WHERE id = ?').bind(id).run();
+      return json({ ok: true });
+    }
+
+    if (entity === 'claim' && action === 'create') {
+      requireFields(record, ['id', 'iznos', 'status']);
+      await db.prepare(`INSERT INTO claims
+        (id, case_id, case_number, client, amount, status, decision_date, notes, entry_date, paid_date)
+        VALUES (?,?,?,?,?,?,?,?,?,?)`).bind(
+        record.id, record.pid || null, record.br || '', record.klijent || '', Number(record.iznos), record.status,
+        record.dat || '', record.nap || '', record.datUnos || '', record.datPlacanja || ''
+      ).run();
+      return json({ ok: true });
+    }
+
+    if (entity === 'claim' && action === 'delete') {
+      requireFields({ id }, ['id']);
+      await db.prepare('DELETE FROM claims WHERE id = ?').bind(id).run();
+      return json({ ok: true });
+    }
+
+    if (entity === 'claim' && action === 'update') {
+      requireFields({ id }, ['id']);
+      if (fields && fields.status !== undefined) {
+        if (fields.datPlacanja !== undefined) {
+          await db.prepare('UPDATE claims SET status = ?, paid_date = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+            .bind(fields.status, fields.datPlacanja || '', id).run();
+        } else {
+          await db.prepare('UPDATE claims SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+            .bind(fields.status, id).run();
+        }
+        return json({ ok: true });
+      }
+    }
+
+    return json({ error: 'Unsupported mutation.' }, 400);
+  } catch (error) {
+    console.error('POST /api/mutate failed', error);
+    return json({ error: error.message || 'Database mutation failed.' }, 500);
+  }
+}
