@@ -14,7 +14,7 @@ async function savePot(){
   var klijent=document.getElementById('pot-klijent').value.trim();
   if(!br&&!pid){alert('Unesite broj predmeta ili izaberite iz liste.');return;}
   if(!iznos){alert('Unesite iznos potraživanja.');return;}
-  var obj={id:Date.now().toString(),pid:pid||'',br:document.getElementById('pot-br').value.trim()||br,klijent:klijent,iznos:iznos,status:_potSt,dat:document.getElementById('pot-dat').value,nap:document.getElementById('pot-nap').value.trim(),datUnos:todayIso()};
+  var obj={id:newId(),pid:pid||'',br:document.getElementById('pot-br').value.trim()||br,klijent:klijent,iznos:iznos,status:_potSt,dat:document.getElementById('pot-dat').value,nap:document.getElementById('pot-nap').value.trim(),datUnos:todayIso()};
   try{await dbMutate({entity:'claim',action:'create',record:obj});}catch(e){dbError(e);return;}
   D.pot.push(obj);closeM('pot');renderPot();
   document.getElementById('sn-pot').textContent=D.pot.filter(function(x){return x.status!=='placeno';}).length;
