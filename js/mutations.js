@@ -19,6 +19,17 @@ async function delRok(id,pid){
   D.k=D.k.filter(function(x){return x.id!==id;});
   scheduleAlarms();if(pid)openDetail(pid);else render();
 }
+async function assignCase(id,userId){
+  var p=D.p.find(function(x){return x.id===id;});if(!p)return;
+  var oldId=p.assignedUserId||'';
+  var u=USERS.find(function(x){return x.id===userId;});if(!u)return;
+  try{await dbMutate({entity:'case',action:'update',id:id,fields:{assignedUserId:userId}});}catch(e){
+    var sel=document.getElementById('detail-assignee');if(sel)sel.value=oldId;
+    dbError(e);return;
+  }
+  p.assignedUserId=userId;p.assignedUserName=u.displayName;
+  openDetail(id);render();
+}
 async function addUplata(id){
   var iz=parseFloat(prompt('Iznos uplate (RSD):'));if(!iz||isNaN(iz)||iz<=0)return;
   var p=D.p.find(function(x){return x.id===id;});if(!p)return;
