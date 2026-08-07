@@ -11,7 +11,12 @@ function extension(name) {
 }
 
 function disposition(name) {
-  return `attachment; filename*=UTF-8''${encodeURIComponent(String(name || 'document'))}`;
+  const original = String(name || 'document');
+  const ascii = original
+    .normalize('NFKD')
+    .replace(/[^\x20-\x7E]/g, '')
+    .replace(/["\\]/g, '_') || 'document';
+  return `inline; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(original)}`;
 }
 
 function toBase64(buffer) {
@@ -126,6 +131,7 @@ export async function onRequestGet(context) {
     headers.set('Content-Disposition', disposition(row.file_name || stored.name));
     headers.set('Cache-Control', 'private, no-store');
     headers.set('Content-Length', String(bytes.byteLength));
+    headers.set('X-Content-Type-Options', 'nosniff');
 
     return new Response(bytes, { headers });
   } catch (error) {
