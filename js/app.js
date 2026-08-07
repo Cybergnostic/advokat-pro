@@ -24,12 +24,13 @@
 async function initApp(){
   initSW();
   checkBanner();
-  pVrsta();
   try{
+    await loadAppConfig();
+    pVrsta();
     await loadSharedState();
   }catch(e){
-    console.error('Shared database could not be loaded',e);
-    alert('Zajednička baza trenutno nije dostupna. Podaci nisu učitani.');
+    console.error('Application startup failed',e);
+    alert('Aplikacija trenutno ne može da učita konfiguraciju ili zajedničku bazu.');
   }
   checkAlarms();
   scheduleAlarms();
