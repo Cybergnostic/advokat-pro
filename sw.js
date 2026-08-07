@@ -1,8 +1,11 @@
-const CACHE_NAME = 'advokat-pro-v6';
+const CACHE_NAME = 'advokat-pro-v7';
 const APP_FILES = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
+  "./assets/icons/icon-192.png",
+  "./assets/icons/icon-512.png",
+  "./assets/icons/apple-touch-icon.png",
   "./css/base.css",
   "./css/layout.css",
   "./css/components.css",
