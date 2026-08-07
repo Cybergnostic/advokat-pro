@@ -1,4 +1,4 @@
-// SHARED FILE STORAGE (Cloudflare R2)
+// SHARED FILE STORAGE (Google Drive via authenticated app API)
 async function storeFiles(fileList, actionId){
   var files=Array.from(fileList||[]); if(!files.length) return [];
   if(!actionId) throw new Error('Nedostaje ID radnje.');
